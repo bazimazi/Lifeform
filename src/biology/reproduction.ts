@@ -4,6 +4,9 @@ import { creature } from '../world/generation';
 import { clamp } from '../core/random';
 import { TUNING } from '../data/content';
 import type { ActionResult, GameState } from '../core/types';
+import { inheritGenome } from './genetics';
+import { validateBody } from './body';
+import { distance } from '../core/random';
 
 export function lineagePopulation(state: GameState): number {
   return state.lineage.archive.filter((x) => x.died === null).length;
@@ -26,23 +29,38 @@ export function reproductionReason(state: GameState): string | null {
     return 'Your territory is at its population limit.';
   return null;
 }
-export function reproduce(state: GameState): ActionResult {
+export function reproduce(state: GameState, mateId?: string): ActionResult {
   const reason = reproductionReason(state);
   if (reason) return { ok: false, message: reason };
   const p = state.player,
     stats = phenotype(p.genome);
+  const mate = mateId
+    ? state.creatures.find((c) => c.id === mateId && c.speciesId === 'player')
+    : undefined;
+  if (
+    mateId &&
+    (!mate ||
+      mate.juvenile > 0 ||
+      mate.age < TUNING.reproductionAge ||
+      mate.energy < 30 ||
+      distance(mate, p) > 140)
+  )
+    return { ok: false, message: 'Choose a mature, well-fed relative within 140 units.' };
+  if (mate) mate.energy -= TUNING.reproductionEnergy * 0.35;
   p.energy -= TUNING.reproductionEnergy * stats.reproductionCost;
   state.lineage.biomass -= TUNING.reproductionBiomass * stats.reproductionCost;
   p.reproductionCooldown = TUNING.reproductionCooldown;
   for (let i = 0; i < stats.offspringCount; i++) {
     const id = `velari-${state.nextId++}`;
+    let genome = inheritGenome(p.genome, mate?.genome ?? null, state.rng);
+    if (validateBody(genome)) genome = structuredClone(p.genome);
     const child = creature(
       id,
       'player',
-      p.genome,
+      genome,
       clamp(p.x - 45 - i * 25, 25, state.world.width - 25),
       clamp(p.y + 35, 25, state.world.height - 25),
-      p.generation + 1,
+      Math.max(p.generation, mate?.generation ?? 0) + 1,
     );
     child.juvenile = stats.growthTime;
     child.energy = TUNING.offspringEnergy;
@@ -55,7 +73,9 @@ export function reproduce(state: GameState): ActionResult {
       died: null,
       cause: null,
       parent: p.id,
+      ...(mate ? { coParent: mate.id } : {}),
     });
+    state.evolution.branches.find((b) => b.members.includes(p.id))?.members.push(id);
     state.telemetry.births++;
   }
   state.lineage.peak = Math.max(state.lineage.peak, lineagePopulation(state));
@@ -80,6 +100,11 @@ export function inheritControl(state: GameState, id: string): ActionResult {
   state.creatures = state.creatures.filter((c) => c.id !== id);
   state.creatures.push(old);
   state.player = child;
+  const branch = state.evolution.branches.find((b) => b.members.includes(child.id));
+  if (branch) {
+    state.evolution.activeBranch = branch.id;
+    state.lineage.name = branch.name;
+  }
   record(
     state,
     'inheritance',

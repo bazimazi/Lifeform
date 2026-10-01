@@ -16,12 +16,56 @@ export function drawOrganism(
 ) {
   const stats = phenotype(genome),
     organs = new Set(genome.organs.map((id) => organById[id].visual));
+  color = genome.appearance?.color ?? color;
   const radius = (18 + stats.mass * 1.15) * (juvenile ? 0.7 : 1);
   const pulse = 1 + Math.sin(time * 2.4 + x) * 0.025;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
   ctx.scale(scale * pulse, scale / pulse);
+  ctx.scale(genome.appearance?.proportions ?? 1, 1);
+  if (organs.has('wings')) {
+    ctx.fillStyle = color + '38';
+    ctx.strokeStyle = color + '99';
+    ctx.lineWidth = 1;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(-radius * 0.4, 0);
+      ctx.quadraticCurveTo(
+        -radius * 1.6,
+        side * radius * 2.3,
+        radius * 0.8,
+        side * radius * 1.6 * (1 + Math.sin(time * 5) * 0.1),
+      );
+      ctx.lineTo(radius * 0.4, 0);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+  if (organs.has('legs') || organs.has('hands') || organs.has('claws')) {
+    ctx.strokeStyle = color + 'aa';
+    ctx.lineWidth = 3;
+    for (const side of [-1, 1])
+      for (let i = 0; i < 3; i++) {
+        const x = (i - 1) * radius * 0.6;
+        const swing = Math.sin(time * 6 + i) * 4;
+        ctx.beginPath();
+        ctx.moveTo(x, side * radius * 0.6);
+        ctx.lineTo(x - 5 + swing, side * radius * 1.1);
+        ctx.lineTo(x + 7 + swing, side * radius * 1.45);
+        ctx.stroke();
+      }
+  }
+  if (organs.has('fins')) {
+    ctx.fillStyle = color + '70';
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(-radius * 0.6, side * radius * 0.4);
+      ctx.lineTo(-radius * 1.3, side * radius * 1.2);
+      ctx.lineTo(radius * 0.4, side * radius * 0.7);
+      ctx.fill();
+    }
+  }
   if (player) {
     const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 3.5);
     glow.addColorStop(0, '#b8e99828');
@@ -155,6 +199,9 @@ export function drawOrganism(
     }
   }
   if (organs.has('eye')) {
+    const placement = genome.appearance?.placements.eye ?? { x: 0, y: 0 };
+    ctx.save();
+    ctx.translate(placement.x * radius * 0.4, placement.y * radius * 0.4);
     const count = genome.mutations.includes('compound-eye') ? 3 : 1;
     for (let i = 0; i < count; i++) {
       const ey = (i - (count - 1) / 2) * 8;
@@ -167,8 +214,12 @@ export function drawOrganism(
       ctx.fillStyle = '#193b35';
       ctx.fill();
     }
+    ctx.restore();
   }
   if (organs.has('jaw')) {
+    const placement = genome.appearance?.placements.jaw ?? { x: 0, y: 0 };
+    ctx.save();
+    ctx.translate(placement.x * radius * 0.4, placement.y * radius * 0.4);
     ctx.strokeStyle = '#f5e9bbcc';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -178,6 +229,33 @@ export function drawOrganism(
     ctx.moveTo(radius * 0.85, 9);
     ctx.lineTo(radius * 1.38, 5);
     ctx.lineTo(radius * 1.22, 1);
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (organs.has('brain')) {
+    ctx.fillStyle = '#d0acc799';
+    ctx.beginPath();
+    ctx.ellipse(radius * 0.15, -radius * 0.32, 9, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (organs.has('antenna')) {
+    ctx.strokeStyle = color + 'aa';
+    ctx.lineWidth = 1;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(radius * 0.7, side * radius * 0.4);
+      ctx.lineTo(radius * 1.7, side * radius * 0.8);
+      ctx.stroke();
+    }
+  }
+  if (organs.has('electric')) {
+    ctx.strokeStyle = '#d9e999';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-radius * 0.7, 0);
+    ctx.lineTo(-radius * 0.2, -6);
+    ctx.lineTo(radius * 0.1, 5);
+    ctx.lineTo(radius * 0.6, -3);
     ctx.stroke();
   }
   if (organs.has('venom')) {

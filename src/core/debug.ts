@@ -6,6 +6,10 @@ import { speciesById, TUNING } from '../data/content';
 import { clamp } from './random';
 import type { ActionResult } from './types';
 import type { Simulation } from '../simulation/ecosystem';
+import { exploreRegion } from '../world/regions';
+import { addStatus } from '../biology/conditions';
+import { DISEASES } from '../data/biology';
+import { speciate, buildNest } from '../progression/lineage';
 
 export function debugCommand(sim: Simulation, text: string): ActionResult {
   const [command, ...args] = text.trim().replace(/^\//, '').split(/\s+/);
@@ -13,6 +17,27 @@ export function debugCommand(sim: Simulation, text: string): ActionResult {
     p = s.player;
   const value = Number(args.at(-1));
   switch (command) {
+    case 'teleport': {
+      const r = s.evolution.regions.find((r) => r.biomeId === args[0]);
+      if (!r) break;
+      p.x = r.x + r.width / 2;
+      p.y = r.y + r.height / 2;
+      exploreRegion(s);
+      sim.refresh();
+      return ok(`Travelled to ${r.name}.`);
+    }
+    case 'disease': {
+      const d = DISEASES.find((d) => d.id === args[0]);
+      if (!d) break;
+      addStatus(s, p, d.id, d.duration + d.incubation, 'Developer exposure');
+      return ok('Condition applied.');
+    }
+    case 'speciate':
+      return speciate(s, args.join(' '));
+    case 'nest':
+      return buildNest(s);
+    case 'event':
+      return sim.triggerPressure(args[0]);
     case 'energy':
       if (Number.isFinite(value)) p.energy = clamp(value, 0, phenotype(p.genome).energy);
       else break;

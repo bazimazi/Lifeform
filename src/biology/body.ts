@@ -1,17 +1,22 @@
 import { BASE_STATS, organById, mutationById, TUNING } from '../data/content';
 import { clamp } from '../core/random';
 import type { Diet, Genome, Stats } from '../core/types';
+import { geneModifiers } from './genetics';
 
 export function phenotype(genome: Genome): Stats {
   const stats = { ...BASE_STATS };
   for (const id of genome.organs) add(stats, organById[id]?.modifiers ?? {});
   for (const id of genome.mutations) add(stats, mutationById[id]?.modifiers ?? {});
+  add(stats, geneModifiers(genome));
   stats.speed = Math.max(TUNING.minimumSpeed, stats.speed);
   stats.health = Math.max(1, stats.health);
   stats.energy = Math.max(1, stats.energy);
   stats.metabolism = Math.max(0, stats.metabolism);
   stats.toxinResistance = clamp(stats.toxinResistance, 0, 1);
   stats.reproductionCost = Math.max(0.4, stats.reproductionCost);
+  stats.immunity = clamp(stats.immunity, 0, 0.98);
+  stats.stealth = clamp(stats.stealth, 0, 0.85);
+  stats.regeneration = Math.max(0, stats.regeneration);
   return stats;
 }
 function add(stats: Stats, modifiers: Partial<Stats>) {
@@ -47,6 +52,9 @@ export function validateBody(genome: Genome): string | null {
   }
   if (phenotype(genome).mass > TUNING.bodyBudget)
     return `Body mass exceeds the ${TUNING.bodyBudget} unit budget. Choose a lighter path.`;
+  const stats = phenotype(genome);
+  if (stats.flight > 0 && stats.lift < stats.mass)
+    return `Flight needs enough lift: ${stats.lift} lift for ${stats.mass} body mass.`;
   return null;
 }
 export function mutatedGenome(genome: Genome, id: string): Genome {

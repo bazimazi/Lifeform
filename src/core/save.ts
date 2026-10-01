@@ -1,11 +1,21 @@
 import type { Creature, GameState, Genome } from './types';
 import { createGame } from '../world/generation';
 import { validateBody } from '../biology/body';
-import { mutationById, resourceById, speciesById, TUNING } from '../data/content';
+import {
+  mutationById,
+  resourceById,
+  speciesById,
+  TUNING,
+  SPECIES,
+  PRESSURES,
+} from '../data/content';
+import { createEvolution } from '../world/regions';
+import { validateEvolution } from '../world/validation';
+import { GENES } from '../data/biology';
 
 export const SAVE_KEY = 'lifeform.save';
 export const BACKUP_KEY = 'lifeform.save.backup';
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 const MAX_SAVE_BYTES = 8_000_000;
 type ObjectValue = Record<string, unknown>;
 const object = (value: unknown): value is ObjectValue =>
@@ -22,6 +32,27 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 function genome(value: unknown): asserts value is Genome {
   assert(object(value) && strings(value.organs) && strings(value.mutations), 'genome data');
+  if (value.genes !== undefined)
+    assert(
+      object(value.genes) &&
+        GENES.every((g) => {
+          const pair = (value.genes as ObjectValue)[g.id];
+          return (
+            list(pair, 2) && pair.length === 2 && pair.every((v) => v === 0 || v === 1 || v === 2)
+          );
+        }),
+      'gene alleles',
+    );
+  if (value.appearance !== undefined)
+    assert(
+      object(value.appearance) &&
+        typeof value.appearance.color === 'string' &&
+        /^#[0-9a-f]{6}$/i.test(value.appearance.color) &&
+        number(value.appearance.proportions, 0.7) &&
+        value.appearance.proportions <= 1.4 &&
+        object(value.appearance.placements),
+      'body appearance',
+    );
   assert(!validateBody(value as unknown as Genome), 'body configuration');
 }
 function position(value: ObjectValue, state: ObjectValue) {
@@ -90,6 +121,44 @@ export function migrateSave(data: unknown): unknown {
           legacy.history ??= [];
         }
       }
+    return migrateSave(next);
+  }
+  if (data.schemaVersion === 3) {
+    const next = structuredClone(data);
+    assert(
+      string(next.seed) &&
+        object(next.world) &&
+        object(next.player) &&
+        object(next.lineage) &&
+        list(next.lineage.archive) &&
+        list(next.populations),
+      'version 3 world',
+    );
+    next.schemaVersion = 4;
+    next.evolution ??= createEvolution(
+      next.seed,
+      next.world.width as number,
+      next.world.height as number,
+      next.player as unknown as Creature,
+      next.lineage.archive as GameState['lineage']['archive'],
+    );
+    for (const species of SPECIES)
+      if (!next.populations.some((p) => object(p) && p.speciesId === species.id))
+        next.populations.push({
+          speciesId: species.id,
+          count: species.count,
+          births: 0,
+          deaths: 0,
+          food: 1,
+          fitness: 1,
+          cause: 'New ecosystem discovered',
+        });
+    if (next.lineage.extinct && object(next.evolution) && list(next.evolution.branches))
+      for (const branch of next.evolution.branches)
+        if (object(branch)) {
+          branch.extinct = true;
+          branch.extinctionCause = 'Archived extinction';
+        }
     return next;
   }
   assert(
@@ -165,7 +234,10 @@ export function validateSave(data: unknown): asserts data is GameState {
     new Set(data.resources.map((r) => (r as ObjectValue).id)).size === data.resources.length,
     'duplicate resource IDs',
   );
-  assert(list(data.populations, 5) && data.populations.length === 5, 'populations');
+  assert(
+    list(data.populations, SPECIES.length) && data.populations.length === SPECIES.length,
+    'populations',
+  );
   for (const p of data.populations) {
     assert(
       object(p) && string(p.speciesId) && !!speciesById[p.speciesId] && string(p.cause),
@@ -181,7 +253,7 @@ export function validateSave(data: unknown): asserts data is GameState {
     );
   }
   assert(
-    new Set(data.populations.map((p) => (p as ObjectValue).speciesId)).size === 5,
+    new Set(data.populations.map((p) => (p as ObjectValue).speciesId)).size === SPECIES.length,
     'duplicate populations',
   );
   assert(
@@ -255,7 +327,7 @@ export function validateSave(data: unknown): asserts data is GameState {
   assert(
     data.pressure === null ||
       (object(data.pressure) &&
-        ['drought', 'bloom'].includes(data.pressure.id as string) &&
+        PRESSURES.some((p) => p.id === (data.pressure as ObjectValue).id) &&
         number(data.pressure.remaining)),
     'environmental pressure',
   );
@@ -323,6 +395,7 @@ export function validateSave(data: unknown): asserts data is GameState {
         'legacy historical event',
       );
   }
+  validateEvolution(data.evolution, data as unknown as GameState);
 }
 export function decodeSave(text: string): GameState {
   if (text.length > MAX_SAVE_BYTES) throw new Error('This save is too large to load.');

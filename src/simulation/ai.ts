@@ -17,7 +17,14 @@ export function chooseGoal(
 ): UtilityGoal {
   const stats = phenotype(c.genome),
     definition = speciesById[c.speciesId];
-  const near = agents.query(c, stats.vision).filter((x) => x.id !== c.id && x.health > 0);
+  const near = agents
+    .query(c, stats.vision + stats.hearing * 0.4)
+    .filter(
+      (x) =>
+        x.id !== c.id &&
+        x.health > 0 &&
+        distance(c, x) <= (stats.vision + stats.hearing * 0.4) * (1 - phenotype(x.genome).stealth),
+    );
   const preyIds = definition?.prey ?? [];
   const predatorIds = definition?.predators ?? ['stalker', 'hunter'];
   const goals: UtilityGoal[] = [];
@@ -48,7 +55,7 @@ export function chooseGoal(
     }
   }
   const diet = definition?.diet ?? dietFor(c.genome);
-  for (const food of resources.query(c, stats.vision)) {
+  for (const food of resources.query(c, stats.vision + stats.smell)) {
     if (!food.active || !diet.includes(resourceById[food.type].diet)) continue;
     goals.push({
       score: 0.4 + (1 - c.energy / stats.energy) * 0.6 - (distance(c, food) / stats.vision) * 0.3,

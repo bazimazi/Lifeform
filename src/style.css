@@ -2784,3 +2784,52 @@ td {
     z-index: 1;
   }
 }
+.gene-list,
+.body-editor,
+.region-gallery,
+.branch-tree {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+}
+.gene-list > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  background: #172d2c;
+  border-radius: 12px;
+}
+.gene-list small {
+  margin-left: auto;
+  color: #aac695;
+}
+.body-editor {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.body-editor label {
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+}
+.body-editor select,
+.body-editor input {
+  width: 100%;
+  min-height: 44px;
+}
+.site-row {
+  border-top: 1px solid #ffffff15;
+  margin-top: 14px;
+  padding-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.branch-tree {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+#speciation-form {
+  max-width: 600px;
+  margin-bottom: 24px;
+}

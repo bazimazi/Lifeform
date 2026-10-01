@@ -3,6 +3,7 @@ import type { Creature, GameState, Genome, RngStreams } from '../core/types';
 import { phenotype } from '../biology/body';
 import { RESOURCES, SPECIES, TUNING } from '../data/content';
 import { record } from '../core/history';
+import { createEvolution, settleResources, regionAt, biomeById } from './regions';
 
 export function creature(
   id: string,
@@ -41,10 +42,10 @@ export function createGame(seed = 'FIRST-LIGHT'): GameState {
     'player',
     { organs: ['core', 'mouth', 'cilia'], mutations: [] },
     TUNING.worldWidth / 2,
-    TUNING.worldHeight / 2,
+    TUNING.worldHeight * 0.75,
   );
   const state: GameState = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     seed: seed.trim().slice(0, 80) || 'FIRST-LIGHT',
     time: 0,
     tick: 0,
@@ -111,6 +112,17 @@ export function createGame(seed = 'FIRST-LIGHT'): GameState {
       mutationRejected: 0,
     },
     legacies: [],
+    evolution: createEvolution(seed, TUNING.worldWidth, TUNING.worldHeight, player, [
+      {
+        id: player.id,
+        genome: player.genome,
+        generation: 1,
+        born: 0,
+        died: null,
+        cause: null,
+        parent: null,
+      },
+    ]),
   };
   for (let i = 0; i < 115; i++) {
     const kind = i < 12 ? 'patch' : i % 5 === 0 ? 'rock' : 'reed';
@@ -137,6 +149,16 @@ export function createGame(seed = 'FIRST-LIGHT'): GameState {
         x: 100 + random(rng, 'species') * (state.world.width - 200),
         y: 100 + random(rng, 'species') * (state.world.height - 200),
       };
+      const suitable = state.evolution.regions.filter(
+        (r) => biomeById[r.biomeId].aquatic === phenotype(species.genome).walking < 0.5,
+      );
+      if (suitable.length) {
+        const region = suitable[i % suitable.length];
+        p = {
+          x: region.x + 60 + random(rng, 'species') * (region.width - 120),
+          y: region.y + 60 + random(rng, 'species') * (region.height - 120),
+        };
+      }
       if (species.prey.includes('player') && Math.hypot(p.x - player.x, p.y - player.y) < 500)
         p = { x: 160 + i * 80, y: 150 };
       if (i === 0 && species.id === 'grazer') p = { x: player.x - 165, y: player.y - 150 };
@@ -144,6 +166,8 @@ export function createGame(seed = 'FIRST-LIGHT'): GameState {
       state.creatures.push(creature(`${species.id}-${i}`, species.id, species.genome, p.x, p.y));
     }
   }
+  settleResources(state);
+  state.world.biome = regionAt(state, player).name;
   record(
     state,
     'origin',

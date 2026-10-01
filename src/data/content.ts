@@ -6,6 +6,13 @@ import type {
   SpeciesDefinition,
   Stats,
 } from '../core/types';
+import {
+  ADVANCED_ORGANS,
+  ADVANCED_MUTATIONS,
+  TERRESTRIAL_SPECIES,
+  ENVIRONMENTAL_EVENTS,
+} from './biology';
+import type { PressureDefinition } from '../world/types';
 
 export const TUNING = {
   step: 1 / 30,
@@ -76,6 +83,28 @@ export const BASE_STATS: Stats = {
   reproductionCost: 1,
   offspringCount: 1,
   growthTime: TUNING.juvenileTime,
+  swimming: 1,
+  walking: 0,
+  flight: 0,
+  climbing: 0,
+  heatTolerance: 32,
+  coldTolerance: 10,
+  pressureTolerance: 0.5,
+  immunity: 0,
+  waterStorage: 0,
+  stealth: 0,
+  smell: 0,
+  hearing: 0,
+  intelligence: 0,
+  communication: 0,
+  manipulation: 0,
+  sociality: 0,
+  memory: 0,
+  electricity: 0,
+  projectile: 0,
+  burrowing: 0,
+  lift: 0,
+  oxygenEfficiency: 0.4,
 };
 
 export const ORGANS: OrganDefinition[] = [
@@ -647,7 +676,7 @@ export const SPECIES: SpeciesDefinition[] = [
   },
 ];
 
-export const PRESSURES = [
+export const PRESSURES: PressureDefinition[] = [
   {
     id: 'drought',
     name: 'The shallows are drying',
@@ -668,7 +697,69 @@ export const PRESSURES = [
     affectedDiet: 'all',
     foodFitnessPenalty: 0,
   },
-] as const;
+  ...ENVIRONMENTAL_EVENTS,
+];
+
+ORGANS.push(...ADVANCED_ORGANS);
+MUTATIONS.push(...ADVANCED_MUTATIONS);
+SPECIES.push(...TERRESTRIAL_SPECIES);
+RESOURCES.push(
+  {
+    id: 'grass',
+    name: 'Tender grass',
+    diet: 'plant',
+    energy: 18,
+    biomass: 3,
+    toxicity: 0,
+    radius: 9,
+    color: '#b8ce78',
+    growth: 45,
+  },
+  {
+    id: 'fruit',
+    name: 'Canopy fruit',
+    diet: 'fruit',
+    energy: 28,
+    biomass: 5,
+    toxicity: 0,
+    radius: 10,
+    color: '#d8a476',
+    growth: 70,
+  },
+  {
+    id: 'beetle',
+    name: 'Burrowing beetle',
+    diet: 'insect',
+    energy: 22,
+    biomass: 3,
+    toxicity: 0,
+    radius: 6,
+    color: '#d3b67f',
+    growth: 55,
+  },
+  {
+    id: 'fern',
+    name: 'Shade fern',
+    diet: 'plant',
+    energy: 14,
+    biomass: 4,
+    toxicity: 0,
+    radius: 11,
+    color: '#7ea77d',
+    growth: 55,
+  },
+  {
+    id: 'fungus',
+    name: 'Cave fungus',
+    diet: 'detritus',
+    energy: 19,
+    biomass: 4,
+    toxicity: 2,
+    radius: 8,
+    color: '#c5aecb',
+    growth: 70,
+  },
+);
 
 export const organById = Object.fromEntries(ORGANS.map((x) => [x.id, x]));
 export const mutationById = Object.fromEntries(MUTATIONS.map((x) => [x.id, x]));

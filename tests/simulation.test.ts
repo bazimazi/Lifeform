@@ -31,10 +31,10 @@ function advance(sim: Simulation, seconds: number) {
 }
 
 test('vertical slice catalog is complete, unique, and valid', () => {
-  assert.equal(ORGANS.length, 10);
-  assert.equal(MUTATIONS.length, 20);
-  assert.equal(SPECIES.length, 5);
-  assert.equal(RESOURCES.length, 10);
+  assert.equal(ORGANS.length, 30);
+  assert.equal(MUTATIONS.length, 50);
+  assert.equal(SPECIES.length, 10);
+  assert.equal(RESOURCES.length, 15);
   for (const catalog of [ORGANS, MUTATIONS, SPECIES, RESOURCES])
     assert.equal(new Set(catalog.map((x) => x.id)).size, catalog.length);
   for (const species of SPECIES) assert.equal(validateBody(species.genome), null, species.id);
@@ -338,7 +338,7 @@ test('v2 summary-only legacy records migrate without inventing missing history',
     },
   ];
   const migrated = decodeSave(JSON.stringify(old));
-  assert.equal(migrated.schemaVersion, 3);
+  assert.equal(migrated.schemaVersion, 4);
   assert.equal(migrated.legacies[0].name, 'Earlier Velari');
   assert.deepEqual(migrated.legacies[0].archive, []);
   assert.deepEqual(migrated.legacies[0].history, []);
@@ -359,7 +359,7 @@ test('v1 saves migrate with accessibility defaults, stamina, telemetry, and lega
   delete old.legacies;
   delete old.player.stamina;
   const migrated = decodeSave(JSON.stringify(old));
-  assert.equal(migrated.schemaVersion, 3);
+  assert.equal(migrated.schemaVersion, 4);
   assert.equal(migrated.player.stamina, 100);
   assert.equal(migrated.settings.control, 'hybrid');
 });

@@ -1,3 +1,6 @@
+import type { Genes, Appearance } from '../biology/genetics-types';
+import type { WorldEvolution } from '../world/types';
+
 export interface Vec {
   x: number;
   y: number;
@@ -17,9 +20,32 @@ export type StatKey =
   | 'regeneration'
   | 'reproductionCost'
   | 'offspringCount'
-  | 'growthTime';
+  | 'growthTime'
+  | 'swimming'
+  | 'walking'
+  | 'flight'
+  | 'climbing'
+  | 'heatTolerance'
+  | 'coldTolerance'
+  | 'pressureTolerance'
+  | 'immunity'
+  | 'waterStorage'
+  | 'stealth'
+  | 'smell'
+  | 'hearing'
+  | 'intelligence'
+  | 'communication'
+  | 'manipulation'
+  | 'sociality'
+  | 'memory'
+  | 'electricity'
+  | 'projectile'
+  | 'burrowing'
+  | 'lift'
+  | 'oxygenEfficiency';
 export type Stats = Record<StatKey, number>;
-export type Diet = 'algae' | 'detritus' | 'microbe' | 'meat' | 'mineral' | 'toxic';
+export type Diet =
+  'algae' | 'detritus' | 'microbe' | 'meat' | 'mineral' | 'toxic' | 'plant' | 'fruit' | 'insect';
 export interface OrganDefinition {
   id: string;
   name: string;
@@ -48,6 +74,8 @@ export interface MutationDefinition {
 export interface Genome {
   organs: string[];
   mutations: string[];
+  genes?: Genes;
+  appearance?: Appearance;
 }
 export interface Creature extends Vec {
   id: string;
@@ -125,6 +153,7 @@ export interface Descendant {
   died: number | null;
   cause: string | null;
   parent: string | null;
+  coParent?: string;
 }
 export interface LegacyRecord {
   name: string;
@@ -135,6 +164,7 @@ export interface LegacyRecord {
   cause: string;
   archive: Descendant[];
   history: HistoryEvent[];
+  evolution?: WorldEvolution;
 }
 export interface Pressure {
   id: string;
@@ -204,6 +234,7 @@ export interface GameState {
   settings: Settings;
   telemetry: Telemetry;
   legacies: LegacyRecord[];
+  evolution: WorldEvolution;
 }
 export interface Input {
   x: number;

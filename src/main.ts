@@ -12,13 +12,16 @@ import {
 import { saveGame, loadGame, encodeSave, decodeSave } from './core/save';
 import { debugCommand } from './core/debug';
 import { legacyRecord } from './core/history';
-import { TUNING, PRESSURES, SPECIES } from './data/content';
+import { TUNING, PRESSURES } from './data/content';
 import type { GameState, ActionResult, Settings } from './core/types';
 import { WorldRenderer } from './presentation/world';
 import { drawPreview } from './presentation/creature';
 import { AudioFeedback } from './presentation/audio';
 import { icon, escapeHtml as esc } from './presentation/icons';
 import * as ui from './presentation/ui';
+import * as evolutionUI from './presentation/evolution-ui';
+import { buildNest, stockNest, speciate } from './progression/lineage';
+import { investigate, climate, regionAt } from './world/regions';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = ui.shell();
@@ -148,9 +151,9 @@ function refreshPanels(force = false) {
   if (view !== 'habitat')
     get('secondary-panel').innerHTML =
       view === 'creature'
-        ? ui.creatureView(s)
+        ? ui.creatureView(s) + evolutionUI.geneticsPanel(s)
         : view === 'lineage'
-          ? ui.lineageView(s)
+          ? ui.lineageView(s) + evolutionUI.branchesPanel(s)
           : ui.discoveryView(s);
 }
 function updateHud() {
@@ -212,8 +215,9 @@ function updateHud() {
   get('paused-badge').hidden = !started || running() || s.lineage.extinct;
   get('welcome').hidden = started || s.lineage.extinct;
   const pressure = PRESSURES.find((x) => x.id === s.pressure?.id);
+  const local = climate(s, p);
   get('environment-badge').innerHTML =
-    `${icon(pressure?.id === 'drought' ? 'drop' : 'sun')}<span>${pressure ? esc(pressure.name) : 'Gentle waters'}<small>${pressure ? `${Math.ceil(s.pressure!.remaining)}s · ${pressure.id === 'drought' ? 'Algae growth slowed' : 'Faster resource growth'}` : 'A good place to begin'}</small></span>`;
+    `${icon(local.biome.aquatic ? 'drop' : 'sun')}<span>${esc(pressure?.name ?? local.biome.name)}<small>${local.temperature.toFixed(0)} C / ${pressure ? `${Math.ceil(s.pressure!.remaining)}s remaining` : regionAt(s, p).name}</small></span>`;
   get('environment-badge').classList.toggle('pressure', !!pressure);
   document.body.classList.toggle('large-text', s.settings.textScale);
   document.body.classList.toggle('left-handed', s.settings.leftHanded);
@@ -238,7 +242,7 @@ function updateHud() {
       ? 'Use your mutation points. Preview a new organ, and feel the difference it makes.'
       : !born
         ? 'Gather 10 biomass, grow for 12 seconds, and reproduce. Protect your young as they grow.'
-        : 'Discover all five neighbors, try another adaptation, and guide your offspring through the shallows.';
+        : 'Explore new habitats, adapt to their pressures, and establish a new species branch.';
   refreshPanels();
   if ((s.history.at(-1)?.id ?? 0) > lastEventId) {
     const last = s.history.at(-1)!;
@@ -336,17 +340,56 @@ app.addEventListener('click', (event) => {
       get<HTMLInputElement>('import-file').click();
       break;
     case 'map':
-      showDialog(
-        ui.dialogFrame(
-          'A world worth knowing.',
-          `<p class="dialog-intro">${sim.state.world.visited.length} territories explored. The outlined area is your current view.</p><canvas id="large-map" class="large-map" width="720" height="540" aria-label="Explored world and known species"></canvas><div class="map-legend"><span><i style="background:#b8e998"></i>Your lineage</span>${SPECIES.filter(
-            (s) => sim.state.discoveries.species.includes(s.id),
-          )
-            .map((s) => `<span><i style="background:${s.color}"></i>${s.name}</span>`)
-            .join('')}</div>`,
-        ),
-      );
+      showDialog(ui.dialogFrame('A world worth knowing.', evolutionUI.worldPanel(sim.state)));
       break;
+    case 'mating':
+      showDialog(ui.dialogFrame('The next generation', evolutionUI.matingPanel(sim.state)));
+      break;
+    case 'mate':
+      result(reproduce(sim.state, value), 'birth');
+      break;
+    case 'build-nest':
+      result(buildNest(sim.state));
+      break;
+    case 'stock-nest':
+      result(stockNest(sim.state, value, 5));
+      break;
+    case 'investigate':
+      result(investigate(sim.state, value));
+      showDialog(ui.dialogFrame('A world worth knowing.', evolutionUI.worldPanel(sim.state)));
+      break;
+    case 'navigate-region':
+    case 'navigate-site': {
+      const r = sim.state.evolution.regions.find((r) => r.id === value);
+      const target =
+        action === 'navigate-region' && r
+          ? { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+          : sim.state.evolution.regions.flatMap((r) => r.sites).find((s) => s.id === value);
+      if (target) {
+        setView('habitat');
+        started = true;
+        paused = false;
+        input.target = { x: target.x, y: target.y };
+      }
+      break;
+    }
+    case 'appearance': {
+      const p = sim.state.player,
+        organ = get<HTMLSelectElement>('placement-organ').value;
+      p.genome.appearance = {
+        color: get<HTMLInputElement>('body-color').value,
+        proportions: Number(get<HTMLInputElement>('body-proportions').value),
+        placements: {
+          ...p.genome.appearance?.placements,
+          [organ]: {
+            x: Number(get<HTMLInputElement>('placement-x').value),
+            y: Number(get<HTMLInputElement>('placement-y').value),
+          },
+        },
+      };
+      result({ ok: true, message: 'Body design saved and inherited by future offspring.' });
+      break;
+    }
     case 'debug':
       if (import.meta.env.DEV) showDebug();
       break;
@@ -383,11 +426,14 @@ app.addEventListener('submit', (event) => {
     next.lineage.legacy = old.lineage.legacy;
     next.discoveries = structuredClone(old.discoveries);
     next.settings = structuredClone(old.settings);
+    next.evolution.unlocks = [...new Set(old.evolution.unlocks)];
     replaceWorld(next);
     saveProtected = false;
     save();
     dialog.close();
     notify('A new beginning. Your earlier lineages remain in the archive.');
+  } else if (form.id === 'speciation-form') {
+    result(speciate(sim.state, String(new FormData(form).get('name') ?? '')));
   } else if (form.id === 'debug-form' && import.meta.env.DEV) {
     result(debugCommand(sim, String(new FormData(form).get('command'))));
     showDebug();

@@ -3,6 +3,7 @@ import { phenotype, dietFor } from '../biology/body';
 import { clamp, distance, hash } from '../core/random';
 import { resourceById, speciesById } from '../data/content';
 import { drawOrganism, creatureRadius } from './creature';
+import { regionAt, biomeById } from '../world/regions';
 
 export class WorldRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -56,7 +57,7 @@ export class WorldRenderer {
       height * 0.5,
       width * 0.8,
     );
-    water.addColorStop(0, '#224340');
+    water.addColorStop(0, biomeById[regionAt(state, state.player).biomeId].color);
     water.addColorStop(0.6, '#193430');
     water.addColorStop(1, '#101f21');
     ctx.fillStyle = water;
@@ -65,6 +66,15 @@ export class WorldRenderer {
     ctx.translate(width / 2, height / 2);
     ctx.scale(this.scale, this.scale);
     ctx.translate(-this.camera.x, -this.camera.y);
+    for (const region of state.evolution.regions) {
+      ctx.fillStyle = biomeById[region.biomeId].color + '45';
+      ctx.fillRect(region.x, region.y, region.width, region.height);
+      ctx.strokeStyle = biomeById[region.biomeId].accent + '22';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 15]);
+      ctx.strokeRect(region.x, region.y, region.width, region.height);
+      ctx.setLineDash([]);
+    }
     const visible = (p: Vec, pad = 100) =>
       Math.abs(p.x - this.camera.x) < width / this.scale / 2 + pad &&
       Math.abs(p.y - this.camera.y) < height / this.scale / 2 + pad;
@@ -198,6 +208,29 @@ export class WorldRenderer {
       }
     }
     const p = state.player;
+    for (const nest of state.evolution.nests) {
+      ctx.strokeStyle = '#ccb58d88';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(nest.x, nest.y, 48, 33, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.font = '11px Segoe UI';
+      ctx.fillStyle = '#cfbf9a';
+      ctx.textAlign = 'center';
+      ctx.fillText(`NEST · ${Math.floor(nest.food)} FOOD`, nest.x, nest.y + 50);
+    }
+    for (const site of state.evolution.regions.flatMap((r) => r.sites))
+      if (site.discovered && !site.investigated) {
+        ctx.strokeStyle = '#d6c28d66';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(site.x, site.y, 20, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.font = '10px Segoe UI';
+        ctx.fillStyle = '#d6c28d';
+        ctx.textAlign = 'center';
+        ctx.fillText(site.kind.toUpperCase(), site.x, site.y + 36);
+      }
     if (this.showVision) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, phenotype(p.genome).vision, 0, Math.PI * 2);
@@ -294,6 +327,7 @@ export class WorldRenderer {
     vignette.addColorStop(1, '#0b161780');
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, width, height);
+
     ctx.font = '10px "Segoe UI", sans-serif';
     ctx.fillStyle = '#91b39b55';
     ctx.textAlign = 'left';
@@ -307,6 +341,20 @@ export class WorldRenderer {
       sy = height / state.world.height;
     ctx.fillStyle = '#132728';
     ctx.fillRect(0, 0, width, height);
+    for (const region of state.evolution.regions) {
+      ctx.fillStyle = biomeById[region.biomeId].color;
+      ctx.fillRect(region.x * sx, region.y * sy, region.width * sx, region.height * sy);
+      if (large) {
+        ctx.fillStyle = region.discovered ? '#e2edd0' : '#b0bea6';
+        ctx.font = '12px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText(
+          region.name,
+          (region.x + region.width / 2) * sx,
+          (region.y + region.height / 2) * sy,
+        );
+      }
+    }
     for (const cell of state.world.visited) {
       const [x, y] = cell.split(',').map(Number);
       ctx.fillStyle = '#b8e9980d';
