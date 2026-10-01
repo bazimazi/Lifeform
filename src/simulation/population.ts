@@ -1,8 +1,11 @@
+import { activePressure } from '../world/pressures';
 import type { GameState } from '../core/types';
-import { SPECIES, resourceById, speciesById, TUNING, PRESSURES } from '../data/content';
+import { SPECIES, resourceById, speciesById, TUNING } from '../data/content';
 import { clamp, random } from '../core/random';
 import { creature } from '../world/generation';
 import { record } from '../core/history';
+import { biomeById, regionAt } from '../world/regions';
+import { phenotype } from '../biology/body';
 
 export function updatePopulations(state: GameState) {
   for (const pop of state.populations) {
@@ -21,14 +24,18 @@ export function updatePopulations(state: GameState) {
       .filter((p) => species.predators.includes(p.speciesId))
       .reduce((sum, p) => sum + p.count * 0.005, 0);
     pop.food = clamp((available + prey * 2) / (pop.count * 4), 0, 1);
-    const pressure = PRESSURES.find((p) => p.id === state.pressure?.id);
+    const pressure = activePressure(state);
     const droughtPenalty =
       pressure && (pressure.affectedDiet === 'all' || species.diet.includes(pressure.affectedDiet))
         ? pressure.foodFitnessPenalty
         : 0;
     pop.fitness = clamp(pop.food - droughtPenalty - predation, 0, 1.2);
-    const represented = state.creatures.filter((c) => c.speciesId === pop.speciesId).length;
-    const farCount = Math.max(0, pop.count - represented);
+    const cohort = state.creatures.filter((c) => c.speciesId === pop.speciesId);
+    const dormant = cohort.filter(
+      (c) => Math.hypot(c.x - state.player.x, c.y - state.player.y) > TUNING.nearRadius,
+    );
+    const active = cohort.length - dormant.length;
+    const farCount = Math.max(0, pop.count - active);
     const births = stochasticRound(farCount * species.birthRate * pop.fitness, state);
     const deaths = Math.min(
       farCount,
@@ -38,23 +45,76 @@ export function updatePopulations(state: GameState) {
         state,
       ),
     );
-    pop.count = Math.max(represented, pop.count + births - deaths);
+    pop.count = Math.max(active, pop.count + births - deaths);
+    // Dormant representatives belong to the aggregate population; they are not immortal reserves.
+    const removed = dormant.slice(0, Math.max(0, cohort.length - pop.count));
+    const removedIds = new Set(removed.map((c) => c.id));
+    if (removed.length) {
+      state.creatures = state.creatures.filter((c) => !removedIds.has(c.id));
+      for (const c of removed) delete state.evolution.statuses[c.id];
+    }
+    if (state.progression.apex && removedIds.has(state.progression.apex.id))
+      state.progression.apex.defeated = true;
+    const represented = cohort.length - removed.length;
     pop.births += births;
     pop.deaths += deaths;
     pop.cause = droughtPenalty
-      ? 'Drought → fewer algae → reduced food fitness'
+      ? `${pressure!.id.charAt(0).toUpperCase() + pressure!.id.slice(1)} → reduced food availability → reduced food fitness`
       : pop.food < 0.45
         ? 'Food shortage → starvation'
         : predation > 0.1
           ? 'Predator pressure → higher mortality'
           : 'Food supports a stable population';
+    if (pop.count === 0)
+      record(
+        state,
+        'extinction',
+        `${species.name} disappears`,
+        `${pop.cause}. No local or distant population remains.`,
+      );
     // Materialize only a small representative cohort. The rest remain counts.
     if (represented < Math.min(TUNING.maxAgentsPerSpecies, pop.count)) {
-      const x = 100 + random(state.rng, 'species') * (state.world.width - 200);
-      const y = 100 + random(state.rng, 'species') * (state.world.height - 200);
-      state.creatures.push(
-        creature(`${species.id}-${state.nextId++}`, species.id, species.genome, x, y),
+      const habitats = state.evolution.regions.filter(
+        (r) => biomeById[r.biomeId].aquatic === phenotype(species.genome).walking < 0.5,
       );
+      const habitat = habitats[Math.floor(random(state.rng, 'species') * habitats.length)];
+      let x = habitat.x + 30 + random(state.rng, 'species') * (habitat.width - 60);
+      let y = habitat.y + 30 + random(state.rng, 'species') * (habitat.height - 60);
+      if (
+        species.prey.includes('player') &&
+        Math.hypot(x - state.player.x, y - state.player.y) < 500
+      ) {
+        const corners = habitats
+          .flatMap((r) => [
+            { x: r.x + 35, y: r.y + 35 },
+            { x: r.x + r.width - 35, y: r.y + r.height - 35 },
+          ])
+          .sort(
+            (a, b) =>
+              Math.hypot(b.x - state.player.x, b.y - state.player.y) -
+              Math.hypot(a.x - state.player.x, a.y - state.player.y),
+          );
+        x = corners[0].x;
+        y = corners[0].y;
+      }
+      state.creatures.push(
+        creature(
+          `${species.id}-${state.nextId++}`,
+          species.id,
+          state.progression.wildGenomes[species.id] ?? species.genome,
+          x,
+          y,
+        ),
+      );
+    }
+    const near = state.creatures.filter((c) => c.speciesId === pop.speciesId);
+    let far = Math.max(0, pop.count - near.length);
+    const regions = state.evolution.regions;
+    for (let i = 0; i < regions.length; i++) {
+      const allocated = Math.floor(far / (regions.length - i));
+      far -= allocated;
+      regions[i].population[pop.speciesId] =
+        allocated + near.filter((c) => regionAt(state, c).id === regions[i].id).length;
     }
   }
 }

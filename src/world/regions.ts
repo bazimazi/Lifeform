@@ -1,7 +1,9 @@
+import { terrainAt } from './terrain';
+import { activePressure } from './pressures';
 import type { Creature, Descendant, GameState, Vec, ActionResult } from '../core/types';
 import type { WorldEvolution, Region } from './types';
 import { BIOMES } from '../data/biology';
-import { SPECIES, PRESSURES, resourceById } from '../data/content';
+import { SPECIES, resourceById } from '../data/content';
 import { phenotype } from '../biology/body';
 import { hash, random, streams, distance, clamp } from '../core/random';
 import { record } from '../core/history';
@@ -20,6 +22,12 @@ export function createEvolution(
     row = Math.min(1, Math.floor(player.y / (height / 2)));
   const origin = row * 3 + column;
   [order[4], order[origin]] = [order[origin], order[4]];
+  const indices = order.map((_, i) => i).filter((i) => i !== origin);
+  for (let n = indices.length - 1; n > 0; n--) {
+    const a = indices[n],
+      b = indices[Math.floor(random(regionRng, 'world') * (n + 1))];
+    [order[a], order[b]] = [order[b], order[a]];
+  }
   const regions: Region[] = order.map((biomeId, i) => {
     const x = ((i % 3) * width) / 3,
       y = (Math.floor(i / 3) * height) / 2;
@@ -40,7 +48,7 @@ export function createEvolution(
     return {
       id: `region-${i}`,
       name: biomeById[biomeId].name,
-      continent: 'First continent',
+      continent: i < 3 ? 'Northern reaches' : 'Southern reaches',
       biomeId,
       x,
       y,
@@ -48,7 +56,12 @@ export function createEvolution(
       height: height / 2,
       moisture: biomeId === 'desert' ? 0.1 : biomeById[biomeId].aquatic ? 1 : 0.6,
       temperature: biomeById[biomeId].temperature,
-      fertility: 1,
+      fertility:
+        biomeId === 'desert'
+          ? 0.25
+          : biomeId === 'forest'
+            ? 0.8 + random(regionRng, 'world') * 0.2
+            : 0.55 + random(regionRng, 'world') * 0.4,
       population: Object.fromEntries(SPECIES.map((s) => [s.id, Math.floor(s.count / 6)])),
       sites,
       discovered: i === origin,
@@ -81,7 +94,7 @@ export function createEvolution(
     milestones: [],
     unlocks: ['microbe'],
     symbioses: [],
-    challenge: 'balanced',
+    challenge: 'normal',
     climateTime: 0,
     explorationRewarded: [],
   };
@@ -101,7 +114,22 @@ export function traversal(
 ): { multiplier: number; reason: string | null } {
   const biome = biomeById[regionAt(state, point).biomeId],
     stats = phenotype(c.genome);
-  if (stats.flight > 0 && stats.lift >= stats.mass) return { multiplier: 1.15, reason: null };
+  if (
+    c.id === state.player.id &&
+    state.society.tools.some((t) => t.id === 'glider' && t.durability > 0)
+  )
+    return { multiplier: 1.15, reason: null };
+  if (
+    stats.flight > 0 &&
+    stats.lift >=
+      stats.mass *
+        (state.evolution.challenge === 'high-gravity'
+          ? 2
+          : state.evolution.challenge === 'low-gravity'
+            ? 0.5
+            : 1)
+  )
+    return { multiplier: 1.15, reason: null };
   if (biome.requirements.climbing && stats.climbing < biome.requirements.climbing)
     return { multiplier: 0.2, reason: 'Steep terrain: evolve climbing or flight.' };
   if (biome.aquatic)
@@ -116,13 +144,22 @@ export function traversal(
 export function climate(state: GameState, point: Vec) {
   const region = regionAt(state, point),
     biome = biomeById[region.biomeId];
-  const pressure = PRESSURES.find((p) => p.id === state.pressure?.id);
+  const pressure = activePressure(state);
   return {
     biome,
     region,
-    temperature: biome.temperature + Math.sin(state.time / 180) * 5 + (pressure?.temperature ?? 0),
+    temperature:
+      biome.temperature +
+      Math.sin(state.time / 180) * 5 +
+      (pressure?.temperature ?? 0) +
+      (state.evolution.challenge === 'heat' ? 20 : state.evolution.challenge === 'cold' ? -20 : 0),
     toxicity: clamp(biome.toxicity + (pressure?.toxicity ?? 0), 0, 1),
-    moisture: clamp(region.moisture + (pressure?.water ?? 0), 0, 1),
+    moisture: clamp(
+      (state.world.terrain ? terrainAt(state, point).moisture : region.moisture) +
+        (pressure?.water ?? 0),
+      0,
+      1,
+    ),
   };
 }
 export function exploreRegion(state: GameState) {
@@ -198,8 +235,14 @@ export function settleResources(state: GameState) {
     const candidates = Object.values(resourceById).filter(
       (r) => (biome.resourceWeights[r.diet] ?? 0) > 0,
     );
-    if (candidates.length)
-      resource.type =
-        candidates[hash(`${state.seed}:resource:${resource.id}`) % candidates.length].id;
+    const total = candidates.reduce((n, r) => n + (biome.resourceWeights[r.diet] ?? 0), 0);
+    let pick = (hash(`${state.seed}:resource:${resource.id}`) / 4294967296) * total;
+    for (const candidate of candidates) {
+      pick -= biome.resourceWeights[candidate.diet] ?? 0;
+      if (pick <= 0) {
+        resource.type = candidate.id;
+        break;
+      }
+    }
   }
 }

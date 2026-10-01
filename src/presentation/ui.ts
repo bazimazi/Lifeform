@@ -1,3 +1,5 @@
+import { DEFAULT_KEYS, type KeyBindings } from '../core/controls';
+import { startOptions } from './replay-ui';
 import type { GameState, Genome, Stats } from '../core/types';
 import { phenotype, mutatedGenome, dietFor } from '../biology/body';
 import { mutationReason, previewMutation } from '../biology/mutation';
@@ -43,7 +45,7 @@ export function shell() {
         <div class="mobile-quickbar"><button data-action="mutations">${icon('cell')} Adapt your body</button><button data-action="reproduce" aria-label="Reproduce offspring">${icon('branch')} Reproduce</button></div>
       </section>
       <section id="secondary-panel" class="secondary-panel panel" hidden></section>
-      <aside class="evolution-panel"><div class="panel evolution-inner"><div class="section-heading"><span class="eyebrow">THE NEXT POSSIBILITY</span>${icon('branch')}</div><div class="evolution-title"><h2>Life finds a way.</h2><p>Your next adaptation is a choice.<br> What will your body become?</p></div><div class="currency-row"><span>${icon('cell')} <strong id="mutation-points">1</strong> mutation points</span><span title="Biomass from food"><strong id="biomass-value">6</strong> biomass</span></div><div id="mutation-cards"></div><button class="text-button all-adaptations" data-action="mutations">Explore all adaptations <span>20</span>${icon('arrow')}</button></div><div class="objective-card"><span class="eyebrow">A LITTLE PURPOSE</span><h3 id="objective-title">Find your first meal.</h3><p id="objective-detail">Swim toward the glowing algae. Every small discovery opens a new possibility.</p><div class="objective-steps"><span id="goal-food">01 <b>Feed</b></span><i></i><span id="goal-adapt">02 <b>Adapt</b></span><i></i><span id="goal-birth">03 <b>Continue</b></span></div></div></aside>
+      <aside class="evolution-panel"><div class="panel evolution-inner"><div class="section-heading"><span class="eyebrow">THE NEXT POSSIBILITY</span>${icon('branch')}</div><div class="evolution-title"><h2>Life finds a way.</h2><p>Your next adaptation is a choice.<br> What will your body become?</p></div><div class="currency-row"><span>${icon('cell')} <strong id="mutation-points">1</strong> mutation points</span><span title="Biomass from food"><strong id="biomass-value">6</strong> biomass</span></div><div id="mutation-cards"></div><button class="text-button all-adaptations" data-action="mutations">Explore all adaptations <span>${MUTATIONS.length}</span>${icon('arrow')}</button></div><div class="objective-card"><span class="eyebrow">A LITTLE PURPOSE</span><h3 id="objective-title">Find your first meal.</h3><p id="objective-detail">Swim toward the glowing algae. Every small discovery opens a new possibility.</p><div class="objective-steps"><span id="goal-food">01 <b>Feed</b></span><i></i><span id="goal-adapt">02 <b>Adapt</b></span><i></i><span id="goal-birth">03 <b>Continue</b></span></div></div></aside>
     </div>
     <footer class="bottom-bar"><div class="latest-event">${icon('book')}<span id="latest-event">In a quiet pocket of water, a lineage begins.</span></div><button class="reproduce-button" data-action="reproduce">${icon('branch')} Reproduce <span id="birth-cost">10 biomass</span></button><button class="text-button journal-button" data-action="view" data-value="lineage">Your story so far ${icon('arrow')}</button></footer>
     <div class="footnote"><span>One organism. An unwritten future.</span><button data-action="world-settings" class="seed-button">SEED <span id="seed-label">FIRST-LIGHT</span></button>${import.meta.env.DEV ? '<button data-action="debug" class="seed-button">DEVELOPER TOOLS</button>' : ''}</div>
@@ -113,7 +115,7 @@ export function mutationDialog(s: GameState, id: string) {
 export function adaptationsDialog(s: GameState) {
   return dialogFrame(
     'What could you become?',
-    `<p class="dialog-intro">Twenty adaptations. Branching possibilities. Every advantage asks something of your body.</p><div class="mutation-gallery">${MUTATIONS.map((m) => mutationCard(s, m.id, true)).join('')}</div>`,
+    `<p class="dialog-intro">${MUTATIONS.length} adaptations. Branching possibilities. Every advantage asks something of your body.</p><label class="field-label" for="mutation-search">FIND AN ADAPTATION</label><input id="mutation-search" type="search" placeholder="Search organs, benefits or categories" /><div class="mutation-gallery">${MUTATIONS.map((m) => mutationCard(s, m.id, true)).join('')}</div>`,
     'wide-dialog',
   );
 }
@@ -150,7 +152,7 @@ export function lineageView(s: GameState) {
     )}</div>${s.legacies.length ? `<h3 class="subheading">Earlier lineages</h3>${s.legacies.map((l) => `<div class="legacy-row"><b>${esc(l.name)}</b><span>${timeLabel(l.duration)} · peak ${l.peak} · ${l.adaptations.length} adaptations</span><small>${esc(l.cause)}</small><details><summary>Read this lineage?s archive ? ${l.archive.length} individuals</summary><div class="legacy-history">${l.history.map((h) => `<p><b>${timeLabel(h.time)} ? ${esc(h.title)}</b><br>${esc(h.detail)}</p>`).join('') || '<p>This older save contains a summary only.</p>'}</div></details></div>`).join('')}` : ''}`;
 }
 export function discoveryView(s: GameState) {
-  return `<div class="view-heading"><span class="eyebrow">A FIELD GUIDE TO YOUR WORLD</span><h2>Curiosity is an adaptation.</h2><p>Get close. Find out what lives here, and how everything connects.</p></div><h3 class="subheading">Neighbors in the shallows <span>${s.discoveries.species.length} / 5</span></h3><div class="species-gallery">${SPECIES.map(
+  return `<div class="view-heading"><span class="eyebrow">A FIELD GUIDE TO YOUR WORLD</span><h2>Curiosity is an adaptation.</h2><p>Get close. Find out what lives here, and how everything connects.</p></div><h3 class="subheading">Life across the habitats <span>${s.discoveries.species.length} / ${SPECIES.length}</span></h3><div class="species-gallery">${SPECIES.map(
     (species) => {
       const known = s.discoveries.species.includes(species.id),
         pop = s.populations.find((p) => p.speciesId === species.id)!;
@@ -158,7 +160,7 @@ export function discoveryView(s: GameState) {
     },
   ).join(
     '',
-  )}</div><h3 class="subheading">Food & resources <span>${s.discoveries.resources.length} / 10</span></h3><div class="resource-gallery">${RESOURCES.map((r) => `<div><span class="resource-dot" style="background:${r.color}"></span><b>${s.discoveries.resources.includes(r.id) ? esc(r.name) : '???'}</b><small>${s.discoveries.resources.includes(r.id) ? `${r.energy} energy · ${r.biomass} biomass` : 'Consume to discover'}</small></div>`).join('')}</div><h3 class="subheading">The local food web</h3><div class="food-web">${['Sunlight', 'Algae & microbes', 'Grazers & filter feeders', 'Predators', 'Scavengers & detritus'].map((name, i) => `<span>${name}</span>${i < 4 ? icon('arrow') : ''}`).join('')}</div><p class="muted">Carrion becomes detritus. Food shortages affect grazers first, then their predators. You are part of this cycle.</p>`;
+  )}</div><h3 class="subheading">Food & resources <span>${s.discoveries.resources.length} / ${RESOURCES.length}</span></h3><div class="resource-gallery">${RESOURCES.map((r) => `<div><span class="resource-dot" style="background:${r.color}"></span><b>${s.discoveries.resources.includes(r.id) ? esc(r.name) : '???'}</b><small>${s.discoveries.resources.includes(r.id) ? `${r.energy} energy · ${r.biomass} biomass` : 'Consume to discover'}</small></div>`).join('')}</div><h3 class="subheading">The local food web</h3><div class="food-web">${['Sunlight', 'Algae & microbes', 'Grazers & filter feeders', 'Predators', 'Scavengers & detritus'].map((name, i) => `<span>${name}</span>${i < 4 ? icon('arrow') : ''}`).join('')}</div><p class="muted">Carrion becomes detritus. Food shortages affect grazers first, then their predators. You are part of this cycle.</p>`;
 }
 export function dialogFrame(title: string, body: string, className = '') {
   return `<div class="dialog-content ${className}"><div class="dialog-heading"><h2 id="dialog-title">${esc(title)}</h2><button class="icon-button" data-action="close-dialog" aria-label="Close dialog">${icon('close')}</button></div>${body}</div>`;
@@ -169,7 +171,12 @@ export function settingsDialog(s: GameState) {
     `<p class="dialog-intro">The world pauses while you’re here.</p><div class="settings-list">${[
       ['reducedMotion', 'Reduced motion', 'Keep the water and cellular animation still.'],
       ['particles', 'Ambient particles', 'Tiny details in the water.'],
-      ['sound', 'Biological sounds', 'Soft cues for feeding, mutation, birth, and death.'],
+      [
+        'sound',
+        'Biological sounds',
+        'Cues for food, hunger, movement, danger, birth and milestones.',
+      ],
+      ['vibration', 'Vibration', 'Brief biological feedback on supported devices.'],
       ['textScale', 'Larger text', 'Give labels and descriptions more room.'],
       ['leftHanded', 'Left-handed controls', 'Swap the joystick and action buttons.'],
     ]
@@ -179,7 +186,16 @@ export function settingsDialog(s: GameState) {
       )
       .join(
         '',
-      )}<label><span><b>Control style</b><small>Hybrid and touch modes automatically eat nearby food.</small></span><select data-setting="control" aria-label="Control style"><option value="hybrid" ${s.settings.control === 'hybrid' ? 'selected' : ''}>Hybrid</option><option value="direct" ${s.settings.control === 'direct' ? 'selected' : ''}>Direct + action</option><option value="touch" ${s.settings.control === 'touch' ? 'selected' : ''}>Tap to move</option></select></label></div><h3 class="subheading">Your lineage, kept safe</h3><p class="muted">Autosaves stay in this browser. Export a copy to carry your world elsewhere.</p><div class="button-row"><button class="secondary-button" data-action="export">Export save</button><button class="secondary-button" data-action="import">Import save</button><button class="text-button" data-action="world-settings">World seed ${icon('arrow')}</button></div>`,
+      )}<label><span><b>Control style</b><small>Hybrid and touch modes automatically eat nearby food.</small></span><select data-setting="control" aria-label="Control style"><option value="hybrid" ${s.settings.control === 'hybrid' ? 'selected' : ''}>Hybrid</option><option value="direct" ${s.settings.control === 'direct' ? 'selected' : ''}>Direct + action</option><option value="touch" ${s.settings.control === 'touch' ? 'selected' : ''}>Tap to move</option></select></label></div><h3 class="subheading">Your keyboard</h3><form id="keybindings-form"><div class="body-editor">${Object.keys(
+      DEFAULT_KEYS,
+    )
+      .map(
+        (k) =>
+          `<label>${k}<input name="${k}" maxlength="10" value="${esc((s.settings.keys ?? DEFAULT_KEYS)[k as keyof KeyBindings] === ' ' ? 'space' : (s.settings.keys ?? DEFAULT_KEYS)[k as keyof KeyBindings])}" /></label>`,
+      )
+      .join(
+        '',
+      )}</div><button class="secondary-button" type="submit">Save keyboard controls</button></form><h3 class="subheading">Your lineage, kept safe</h3><p class="muted">Autosaves stay in this browser. Export a copy to carry your world elsewhere.</p><div class="button-row"><button class="secondary-button" data-action="export">Export save</button><button class="secondary-button" data-action="import">Import save</button><button class="text-button" data-action="world-settings">World seed ${icon('arrow')}</button></div>`,
   );
 }
 export function helpDialog() {
@@ -191,7 +207,7 @@ export function helpDialog() {
 export function worldSettingsDialog(s: GameState) {
   return dialogFrame(
     'Another beginning.',
-    `<p class="dialog-intro">A seed creates a reproducible world. Starting again retires this living world into your legacy; export it first if you want to return.</p><form id="new-world-form"><label class="field-label" for="world-seed">WORLD SEED</label><input id="world-seed" name="seed" type="text" maxlength="80" value="${esc(s.seed)}" required autocomplete="off" /><div class="button-row"><button class="secondary-button" type="button" data-action="export">Export current world</button><button class="primary-button" type="submit">Start a new lineage ${icon('arrow')}</button></div></form>`,
+    `<p class="dialog-intro">A seed creates a reproducible world. Starting again retires this living world into your legacy; export it first if you want to return.</p><form id="new-world-form"><label class="field-label" for="world-seed">WORLD SEED</label><input id="world-seed" name="seed" type="text" maxlength="80" value="${esc(s.seed)}" required autocomplete="off" />${startOptions(s)}<div class="button-row"><button class="secondary-button" type="button" data-action="export">Export current world</button><button class="primary-button" type="submit">Start a new lineage ${icon('arrow')}</button></div></form>`,
   );
 }
 export function extinctionDialog(s: GameState) {

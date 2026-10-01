@@ -1,3 +1,4 @@
+import { terrainAt } from '../world/terrain';
 import type { ActionResult, GameState, Creature } from '../core/types';
 import {
   MATERIALS,
@@ -109,15 +110,15 @@ export function gather(s: GameState, material: string): ActionResult {
     m = material as Material;
   const abundance: Partial<Stock> = {
     food: local.fertility,
-    water: local.moisture + (biome.aquatic ? 1 : 0),
+    water: Math.max(local.moisture, terrainAt(s, s.player).moisture) + (biome.aquatic ? 1 : 0),
     wood: ['forest', 'swamp'].includes(local.biomeId) ? 1.4 : 0.3,
     stone: biome.elevation + 0.4,
     fiber: local.fertility,
     bone: 0.45,
     fuel: local.biomeId === 'desert' ? 1.1 : 0.4,
   };
-  const amount = Math.max(1, Math.floor(4 * (abundance[m] ?? 0) * (1 + toolBonus(s, 'gather', 1))));
   if (s.player.energy < 5) return no('Eat before gathering materials.');
+  const amount = Math.max(1, Math.floor(4 * (abundance[m] ?? 0) * (1 + toolBonus(s, 'gather', 1))));
   s.player.energy -= 4;
   s.society.stock[m] += amount;
   s.society.gatherReadyAt = s.time + 3;
@@ -385,6 +386,18 @@ export function housing(t: Settlement) {
     0,
   );
 }
+export function shelterDefense(s: GameState, c: Creature) {
+  if (c.speciesId !== 'player') return 0;
+  const town = s.society.settlements.find(
+    (t) => !t.lost && t.population > 0 && distance(t, c) < 130,
+  );
+  return town
+    ? town.population * 4 +
+        (town.buildings.shelter ?? 0) * 8 +
+        town.jobs.warrior * 8 +
+        (town.buildings.watchtower ?? 0) * 20
+    : 0;
+}
 export function tickSociety(s: GameState, dt: number) {
   const q = s.society;
   q.tick++;
@@ -589,9 +602,13 @@ export function tickSociety(s: GameState, dt: number) {
 }
 // A developed society preserves the lineage through unrepresented citizens.
 export function citizenSuccessor(s: GameState): Creature | null {
-  const t = s.society.settlements.find((t) => !t.lost && t.population >= 2 && t.health > 10);
-  if (!t) return null;
-  const c = creature(`citizen-${s.nextId++}`, 'player', t.genome, t.x, t.y);
+  const t = s.society.settlements.find((t) => !t.lost && t.population >= 1 && t.health > 0);
+  const planet = s.space.planets.find(
+    (p) => p.colony && p.colony.population >= 1 && p.colony.health > 0,
+  );
+  const origin = t ?? (planet?.colony ? { ...planet.colony, x: s.player.x, y: s.player.y } : null);
+  if (!origin) return null;
+  const c = creature(`citizen-${s.nextId++}`, 'player', origin.genome, origin.x, origin.y);
   c.generation = s.player.generation + 1;
   c.age = 20;
   s.lineage.archive.push({
@@ -603,14 +620,26 @@ export function citizenSuccessor(s: GameState): Creature | null {
     cause: null,
     parent: s.player.id,
   });
-  const branch = s.evolution.branches.find((b) => b.id === t.branchId)!;
+  const branch = s.evolution.branches.find((b) => b.id === origin.branchId)!;
   branch.members.push(c.id);
   branch.extinct = false;
   branch.extinctionCause = null;
-  t.population--;
+  if (!t && planet?.colony) {
+    planet.colony.population--;
+    if (planet.colony.population < 1) planet.colony = null;
+    record(
+      s,
+      'inheritance',
+      'A descendant returns from the stars',
+      `${planet.name} sends a living descendant to continue the ancestral world.`,
+    );
+    return c;
+  }
+  t!.population--;
+  if (t!.population === 0) t!.lost = true;
   for (const job of PROFESSIONS)
-    if (t.jobs[job] > 0) {
-      t.jobs[job]--;
+    if (t!.jobs[job] > 0) {
+      t!.jobs[job]--;
       break;
     }
   return c;

@@ -1,3 +1,6 @@
+import { validateTerrain } from '../world/terrain';
+import { validBindings } from './controls';
+import { createProgression, validateProgression } from '../progression/replay';
 import type { Creature, GameState, Genome } from './types';
 import { createGame } from '../world/generation';
 import { validateBody } from '../biology/body';
@@ -18,7 +21,7 @@ import { validateSociety } from '../society/validation';
 
 export const SAVE_KEY = 'lifeform.save';
 export const BACKUP_KEY = 'lifeform.save.backup';
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 const MAX_SAVE_BYTES = 8_000_000;
 type ObjectValue = Record<string, unknown>;
 const object = (value: unknown): value is ObjectValue =>
@@ -174,6 +177,12 @@ export function migrateSave(data: unknown): unknown {
     const next = structuredClone(data);
     next.schemaVersion = 6;
     next.space ??= createSpace(String(next.seed));
+    return migrateSave(next);
+  }
+  if (data.schemaVersion === 6) {
+    const next = structuredClone(data);
+    next.schemaVersion = 7;
+    next.progression ??= createProgression(String(next.seed));
     return next;
   }
   assert(
@@ -299,6 +308,22 @@ export function validateSave(data: unknown): asserts data is GameState {
     archive.every((a) => a.parent === null || archive.some((p) => p.id === a.parent)),
     'ancestor parent',
   );
+  assert(
+    archive.every(
+      (a) =>
+        a.parent === null ||
+        Number(archive.find((p) => p.id === a.parent)!.generation) < Number(a.generation),
+    ),
+    'ancestor generation',
+  );
+  assert(
+    archive.every(
+      (a) =>
+        a.coParent === undefined ||
+        (string(a.coParent) && archive.some((p) => p.id === a.coParent)),
+    ),
+    'mating parent',
+  );
   const livingIds = [data.player, ...(data.creatures as Creature[])]
     .filter((c) => c.speciesId === 'player' && c.health > 0)
     .map((c) => c.id);
@@ -410,9 +435,36 @@ export function validateSave(data: unknown): asserts data is GameState {
         'legacy historical event',
       );
   }
+  const telemetry = data.telemetry as ObjectValue;
+  assert(telemetry.sessions === undefined || number(telemetry.sessions), 'session count');
+  assert(
+    telemetry.activeSeconds === undefined || number(telemetry.activeSeconds),
+    'active play time',
+  );
+  assert(
+    telemetry.first === undefined ||
+      (object(telemetry.first) && Object.values(telemetry.first).every((v) => number(v))),
+    'first events',
+  );
+  const settings = data.settings as ObjectValue;
+  assert(
+    settings.vibration === undefined || typeof settings.vibration === 'boolean',
+    'vibration setting',
+  );
+  assert(settings.keys === undefined || validBindings(settings.keys), 'key bindings');
+  if (object(data.pressure)) {
+    assert(
+      data.pressure.severity === undefined ||
+        (number(data.pressure.severity, 0.5) && data.pressure.severity <= 2),
+      'pressure intensity',
+    );
+    assert(data.pressure.name === undefined || string(data.pressure.name), 'pressure name');
+  }
   validateEvolution(data.evolution, data as unknown as GameState);
   validateSociety(data as unknown as GameState);
   validateSpace(data as unknown as GameState);
+  validateProgression(data as unknown as GameState);
+  validateTerrain(data as unknown as GameState);
 }
 export function decodeSave(text: string): GameState {
   if (text.length > MAX_SAVE_BYTES) throw new Error('This save is too large to load.');

@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame } from '../src/world/generation';
+import { createGame, creature } from '../src/world/generation';
 import { applyMutation } from '../src/biology/mutation';
 import { reproduce } from '../src/biology/reproduction';
 import { Simulation } from '../src/simulation/ecosystem';
 import { encodeSave, decodeSave } from '../src/core/save';
 import { MATERIALS } from '../src/society/types';
 import { TECHNOLOGIES } from '../src/data/society';
+import { speciesById } from '../src/data/content';
 import * as society from '../src/society/society';
 export function intelligent() {
   const s = createGame('society-test');
@@ -116,4 +117,26 @@ test('societal research and economy replay identically across save/load', () => 
   const malformed: any = JSON.parse(encodeSave(s));
   malformed.society.settlements[0].jobs.scholar = 999;
   assert.throws(() => decodeSave(JSON.stringify(malformed)), /society/);
+});
+test('settlement defenses protect residents and failed gathering does not consume a tool', () => {
+  const s = intelligent();
+  assert.ok(society.foundSettlement(s, 'Defensible Home').ok);
+  s.creatures = s.creatures.filter((c) => c.speciesId === 'player');
+  s.resources.forEach((r) => (r.active = false));
+  const predator = creature(
+    'intruder',
+    'stalker',
+    speciesById.stalker.genome,
+    s.player.x + 20,
+    s.player.y,
+  );
+  predator.energy = 10;
+  s.creatures.push(predator);
+  const health = s.player.health;
+  assert.equal(new Simulation(s).act(predator).ok, false);
+  assert.equal(s.player.health, health);
+  s.society.tools = [{ id: 'stone-axe', durability: 5 }];
+  s.player.energy = 1;
+  assert.equal(society.gather(s, 'wood').ok, false);
+  assert.equal(s.society.tools[0].durability, 5);
 });

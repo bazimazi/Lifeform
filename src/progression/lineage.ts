@@ -77,7 +77,12 @@ export function reconcileBranches(state: GameState, dead?: Creature, cause = 'Po
     if (
       branch.extinct ||
       branch.members.some((id) => living.has(id)) ||
-      state.society.settlements.some((t) => !t.lost && t.population > 0 && t.branchId === branch.id)
+      state.society.settlements.some(
+        (t) => !t.lost && t.population > 0 && t.branchId === branch.id,
+      ) ||
+      state.space.planets.some(
+        (p) => p.colony && p.colony.population >= 1 && p.colony.branchId === branch.id,
+      )
     )
       continue;
     branch.extinct = true;

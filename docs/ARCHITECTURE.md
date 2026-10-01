@@ -1,80 +1,75 @@
 # Lifeform architecture
 
-This is the first biological vertical slice from the [product brief](PRODUCT_BRIEF.md). It is a TypeScript simulation with a Canvas 2D presentation and a DOM interface. The simulation runs without the browser, which makes deterministic tests and balancing inexpensive. There is no backend, account requirement, or remote telemetry.
+The app separates a serializable deterministic simulation from browser presentation. Biology, society, industry and space all use the same 30 Hz clock and continuing lineage. No backend, accounts, remote telemetry, DOM nodes or callbacks enter saved state.
 
 ## Boundaries
 
-| Area                           | Responsibility                                                                      |
-| ------------------------------ | ----------------------------------------------------------------------------------- |
-| `src/data/content.ts`          | Organ, mutation, species, resource, pressure, base stat, and tuning definitions     |
-| `src/core/types.ts`            | Serializable contracts; no browser references                                       |
-| `src/core/random.ts`           | Seed hashing and explicit world/species/mutation/event/simulation RNG streams       |
-| `src/core/history.ts`          | Bounded event journal and complete lineage snapshots                                |
-| `src/core/save.ts`             | Schema migrations, validation, serialization, storage recovery                      |
-| `src/core/debug.ts`            | Explicit local development commands                                                 |
-| `src/biology/body.ts`          | Sole phenotype calculation, diet capabilities, slots, mass budget                   |
-| `src/biology/mutation.ts`      | Prerequisites, exclusions, previews, application and removal                        |
-| `src/biology/reproduction.ts`  | Birth conditions, inherited bodies, descendants, voluntary succession               |
-| `src/world/generation.ts`      | Seeded terrain, food, species cohorts and safe initial feeding trail                |
-| `src/world/spatial.ts`         | Generic spatial hash for neighborhood queries                                       |
-| `src/simulation/ai.ts`         | Utility-scored flee, hunt, feed, follow, and wander goals                           |
-| `src/simulation/population.ts` | Aggregate birth/death pressures and explicit food-web relationships                 |
-| `src/simulation/ecosystem.ts`  | Fixed-step orchestration, movement, feeding, combat, needs, discovery and mortality |
-| `src/presentation/`            | Procedural visuals, UI templates, sound cues; consumes simulation state             |
-| `src/main.ts`                  | Browser composition, input, clock scheduling, storage adapter and action dispatch   |
+| Area                                              | Responsibility                                                                                                               |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `src/data/content.ts`, `biology.ts`, `society.ts` | Stable content IDs, organ and mutation graphs, biomes, diseases, events, tools, building recipes and technology dependencies |
+| `src/core/`                                       | State contracts, saved RNG streams, history, validation, migrations, controls and development commands                       |
+| `src/biology/`                                    | One phenotype calculation, body constraints, mutations, mating, inheritance and environmental needs                          |
+| `src/world/`                                      | Seeded regions, terrain/moisture/rivers, discovery, pressures and spatial indexing                                           |
+| `src/simulation/`                                 | Fixed-step orchestration, scored AI goals, movement, combat, resource cycles and aggregate populations                       |
+| `src/progression/`                                | Species branches, fossils, nests, milestones, alternate starts, generated adaptations, objectives and natural selection      |
+| `src/society/`                                    | Learning, tools, material accounting, professions, settlements, construction, research, trade, policies and culture          |
+| `src/space/`                                      | Generated star systems, missions, biological suitability, colonies, mining and frontier science                              |
+| `src/presentation/`                               | Canvas organisms/effects, DOM views, maps and audio; consumes state without owning simulation rules                          |
+| `src/main.ts`                                     | Input and browser lifecycle, time scheduling, action dispatch, storage adapter and UI composition                            |
 
-Biology never imports presentation. `ActionResult` communicates success or an explainable rejection; the interface chooses how to present it. Saves contain plain data, not DOM nodes, callbacks, or class instances. All random choices use saved RNG streams; rendering uses deterministic hashes and simulation time.
+Simulation functions return `ActionResult` with a useful rejection reason. Mutation, research, construction and mission actions validate prerequisites and costs before changing the world. Content additions belong in registries, with mechanical implementations and tests for new capabilities.
 
-## Bodies and adaptations
+## Biology
 
-A genome contains organ IDs and mutation IDs. Organs occupy body slots. A mutation can install an organ, replace the organ in a slot, modify stats, or add a diet capability. Base stats plus organ modifiers plus mutation modifiers produce the phenotype. The same calculation drives movement, combat, biology previews, resource costs and save validation.
+Phenotype combines base values, installed organs, authored mutations, expressed alleles, inherited variations and behavioral traits. Body slots and an 18-unit mass budget constrain combinations. Flight also requires sufficient lift. A single calculation drives movement, combat, costs, previews and validation.
 
-The mass cap is 18 units. Some branches exclude one another (filter feeding versus a predatory jaw; lighter versus larger bodies; improved cilia versus a tail). Others depend on earlier adaptations. Validation completes before biomass or mutation points are spent. Removing a prerequisite is rejected while dependent mutations remain; removing a tail restores basic cilia. Removal does not refund mutation opportunities. Discoveries remain archived.
+Mating selects one allele from each parent across five loci, with deterministic mutation. Physical modules, appearance and traits inherit from the controlled parent. Asexual offspring receive a deep copy. Existing relatives retain their own bodies when the controlled individual mutates. Invalid inherited mass configurations fall back to the valid parental genome.
 
-The present creature editor supports installing, upgrading and removing adaptations. Free organ positioning, color customization and arbitrary body proportions are future work.
+The body editor supports color, proportions and organ offsets through sliders and drag placement. Core and mouth anchor the body. Organ offsets affect rendering and inheritance; they do not independently change collision geometry. Three optional adaptive variations and three behavioral specializations provide constrained procedural choices.
 
-## Time and simulation fidelity
+## Simulation frequency and scope
 
-- Simulation uses a 30 Hz fixed step and a persisted integer tick.
-- AI chooses utility goals every 0.25 seconds; existing intents continue between evaluations.
-- Needs update at 2 Hz. Population accounting updates every eight seconds.
-- Input/rendering use `requestAnimationFrame`; catch-up is bounded to 12 steps per frame.
-- Each species has at most eight materialized representatives (six for the initial apex population).
-- Representatives within 680 world units of the controlled creature receive movement, AI and needs updates. Lineage relatives continue their local simulation so offspring can mature and survive.
-- Other members are aggregate counts. Food, prey supply, competition for finite resources, predator pressure, births and deaths change these counts. Materialized representatives count toward the total and are never added twice.
-- The representative cohort outside the active radius is dormant. The aggregate reserve changes statistically. Full migration and complete far-cohort dematerialization are beyond this slice.
-- Spatial indexes are derived and rebuilt each step. This avoids hidden cache state changing the result after loading a save. Save/replay equality is tested across seeds and spatial boundaries.
-- Resource entries are reused on death; the resource pool is capped at 300. Population representatives are bounded. The live lineage cap is 24.
+- Fixed step: 30 Hz, persisted integer tick. Rendering is independent.
+- AI: every 0.25 seconds; needs, society and space: 2 Hz.
+- Population updates: every eight seconds; selection of wild genomes: every sixty seconds.
+- Up to eight representatives per wildlife archetype, plus one rare apex organism. Relatives remain active; wildlife within 680 units receives detailed updates. Distant represented cohorts are dormant and included in aggregate births and deaths; losses remove excess dormant representatives.
+- Far births/deaths consider food, competition and predation. Materialized agents count toward totals; regional allocations conserve global counts. Replacement cohorts inherit selected wild genomes and spawn in suitable habitats away from the player.
+- Predators hunt below a tunable hunger threshold. Threat perception derives from food-web relationships. Traits add migration, grouping, guarding, parental care, solitude and memory goals.
+- Resource entries are reused on death and capped at 300. Active biological relatives are capped at 24. Settlements are capped at twelve and each building type at eight per settlement.
+- Menus, hidden tabs, pausing and a habitat scrolled out of view stop time. There is no offline progression.
 
-Pausing, opening a dialog, inspecting another screen, hiding the tab, or scrolling the habitat out of view stops the clock. There is no offline progression. Reduced motion removes cellular and ambient animation; it does not stop gameplay movement.
+Settlements are aggregate populations with assigned jobs, shared material stocks, housing, health and stability. Building definitions declare production and input rates. Star destinations use aggregate colonies and timed expeditions; there is no separately controlled 3D planet surface. This follows the brief's instruction to avoid oversimulation while preserving biological consequences.
 
-## Life, death, and historical continuity
+## Continuity
 
-Reproduction is deliberately simple: early organisms reproduce asexually. Offspring receive a deep copy of their parent's current genome and then mature. Parental care changes growth time through the phenotype. Mutating later does not retroactively alter existing relatives.
+Individual death records a cause, then selects a living relative. A settlement or off-world colony can supply a citizen if represented relatives are gone. Whole-lineage extinction archives genomes, history, species branches, society, space and progression. A species branch only becomes a fossil after its represented and settled populations disappear.
 
-On individual death, the archive records the cause and control transfers to the highest-generation living relative, including juveniles. With no relatives, the lineage becomes extinct and a full snapshot of its individual genomes and retained journal is archived. Starting a new seeded world keeps previous legacy records, discoveries, settings and legacy marks. Legacy marks commemorate events; this slice does not sell or apply permanent stat bonuses.
+The journal retains 500 events per world; individual ancestry remains separate. Research, technologies and material stocks belong to the current world. Cross-run continuity retains discoveries, starting-path unlocks, legacy marks and archived worlds, without permanent combat-stat bonuses.
 
-The retained event journal is capped at 500 entries per lineage; individual genome records are retained separately. Species splitting, sexual genetics, intelligence and later eras remain future systems.
+## Persistence
 
-## Save contract
+Current schema: **7**.
 
-Current schema: **3**.
+| Migration | Added data                                                                          |
+| --------- | ----------------------------------------------------------------------------------- |
+| 1 to 2    | Accessibility, stamina, telemetry and legacy summaries                              |
+| 2 to 3    | Full archived genomes and history; older summaries remain summaries                 |
+| 3 to 4    | Deterministic regions, conditions, species branches and expanded wildlife           |
+| 4 to 5    | Society, tools, research, settlement economy and culture                            |
+| 5 to 6    | Star systems, expeditions and colonies                                              |
+| 6 to 7    | Objectives, procedural adaptations, natural selection and starting-path progression |
 
-1. Version 1 → 2 fills accessibility defaults, stamina, telemetry and legacy summary fields.
-2. Version 2 → 3 adds full archived genomes and historical records to legacy entries. Older summaries retain their content, with empty detailed archives where that data never existed.
-3. Unknown newer versions fail with an actionable error. Invalid references, bodies, clocks, positions, numeric data, ID sequences, population counts and lineage ownership are rejected before replacing a world.
+Terrain, control bindings and pressure intensity are optional additive fields within schema 7; older saves use compatible defaults. Import validates bodies, numeric values, references, clocks, ancestry, economy assignments, missions and world bounds before replacing anything. Unknown newer versions fail clearly.
 
-`lifeform.save` is the current browser save; `lifeform.save.backup` is the last validated previous save. Writes keep a known-good recovery copy. A corrupt primary can recover from the backup. If neither loads, the unreadable original is protected from automatic overwrite until the player explicitly starts a new lineage or imports a valid save. Storage failures leave gameplay available and recommend export. Export/import uses the same validation path. The prototype bounds a save to 8 MB; large archives may reach the browser's quota sooner.
+`lifeform.save` stores the current world and `lifeform.save.backup` the last validated previous world. Unreadable saves are protected from automatic overwrite until the player starts a new lineage or imports valid data. JSON export uses the same validation as import. The 8 MB limit prevents unbounded import cost; browser quota may be lower.
 
-Save schema migrations address structural changes. A future update that rebalances existing organ IDs must also consider the effect on old phenotypes and body budgets; that is not solved by a schema number alone.
+Randomness uses saved world/species/mutation/event/simulation streams or independent hashes of explicit seed and index. Spatial indexes are rebuilt, so they cannot hide mutable replay state. Replay tests cover biology, research and economies across save boundaries.
 
-## Content workflow
+## Content and tuning workflow
 
-1. Add a definition to `content.ts`, with a stable ID and all relevant tuning data.
-2. Reference existing organ slots, visual modules, diet capabilities and stat modifiers where possible. An entirely new ability needs a new simulation capability and corresponding tests.
-3. Connect mutation prerequisites/exclusions; check that every path is reachable within the mass budget.
-4. Add species food/prey/predator relationships rather than species-specific branches in the AI.
-5. Verify save compatibility whenever changing an ID, slot, prerequisite, or persisted field.
-6. Run simulation tests, build, browser tests, and the profile before committing.
-
-The original brief is a long-term vision. This slice intentionally provides one coherent biological loop to playtest before expanding its era or content count.
+1. Add stable definitions in the appropriate `src/data` registry. Costs, prerequisites, recipes, outputs and combat/movement tuning are inspectable data.
+2. Reuse phenotype and world-query functions. Add a simulation capability when a new stat needs an effect.
+3. Validate the dependency path, mass budget and save compatibility. Never repurpose an existing content ID without a migration strategy.
+4. Add outcome-focused tests, build, inspect the relevant desktop/mobile UI, and run the profiler for simulation changes.
+5. Use `npm run balance` to compare seeded automated scenarios; inspect causes, food intake, births, survival and population totals. These bots are diagnostic tools, not human playtests.
+6. Update documentation and commit a verified milestone.

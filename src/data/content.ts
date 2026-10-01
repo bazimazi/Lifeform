@@ -24,6 +24,7 @@ export const TUNING = {
   resourceCount: 240,
   nearRadius: 680,
   maxAgentsPerSpecies: 8,
+  predatorHungerThreshold: 0.65,
   maxLineage: 24,
   bodyBudget: 18,
   minimumSpeed: 32,

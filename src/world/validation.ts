@@ -74,6 +74,20 @@ export function validateEvolution(value: unknown, state: GameState): void {
   )
     fail('evolution records');
   const ancestors = new Set(state.lineage.archive.map((a) => a.id));
+  if (new Set(e.branches.map((b) => b.id)).size !== e.branches.length)
+    fail('duplicate species branches');
+  const parents = new Map(e.branches.map((b) => [b.id, b.parentId]));
+  const checked = new Set<string>();
+  for (const branch of e.branches) {
+    let cursor: string | null = branch.id;
+    const path = new Set<string>();
+    while (cursor !== null && !checked.has(cursor)) {
+      if (path.has(cursor)) fail('cyclic species tree');
+      path.add(cursor);
+      cursor = parents.get(cursor) ?? null;
+    }
+    for (const id of path) checked.add(id);
+  }
   const memberships: string[] = [];
   for (const b of e.branches) {
     if (
@@ -101,6 +115,8 @@ export function validateEvolution(value: unknown, state: GameState): void {
     !e.branches.some((b) => b.id === e.activeBranch)
   )
     fail('branch membership');
+  if (state.lineage.archive.some((a) => a.died === null && !memberships.includes(a.id)))
+    fail('living species membership');
   for (const f of e.fossils)
     if (
       !f ||

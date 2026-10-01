@@ -1,3 +1,5 @@
+import { drawDebug } from './debug-overlay';
+import { drawEffects } from './effects';
 import type { GameState, Vec } from '../core/types';
 import { phenotype, dietFor } from '../biology/body';
 import { clamp, distance, hash } from '../core/random';
@@ -11,9 +13,12 @@ export class WorldRenderer {
   public zoom = 1;
   public showVision = false;
   public showFood = false;
+  public debugLayers = new Set<string>();
   private width = 1;
   private height = 1;
   private scale = 1;
+  private worldWidth = 2400;
+  private worldHeight = 1800;
   public target: Vec | null = null;
   constructor(
     public canvas: HTMLCanvasElement,
@@ -25,11 +30,21 @@ export class WorldRenderer {
   screenToWorld(x: number, y: number): Vec {
     const rect = this.canvas.getBoundingClientRect();
     return {
-      x: clamp(this.camera.x + (x - rect.left - this.width / 2) / this.scale, 25, 2375),
-      y: clamp(this.camera.y + (y - rect.top - this.height / 2) / this.scale, 25, 1775),
+      x: clamp(
+        this.camera.x + (x - rect.left - this.width / 2) / this.scale,
+        25,
+        this.worldWidth - 25,
+      ),
+      y: clamp(
+        this.camera.y + (y - rect.top - this.height / 2) / this.scale,
+        25,
+        this.worldHeight - 25,
+      ),
     };
   }
   draw(state: GameState, time: number, realDt: number) {
+    this.worldWidth = state.world.width;
+    this.worldHeight = state.world.height;
     const ctx = this.ctx,
       width = this.canvas.clientWidth,
       height = this.canvas.clientHeight;
@@ -43,7 +58,14 @@ export class WorldRenderer {
     }
     this.width = width;
     this.height = height;
-    this.scale = Math.max(width / (width < 600 ? 640 : 1030), height / 940) * this.zoom;
+    const body = phenotype(state.player.genome),
+      adaptive =
+        1 +
+        Math.max(0, body.mass - 5) * 0.025 +
+        Math.max(0, body.speed - 135) * 0.0015 +
+        (state.player.attackCooldown > 0 ? 0.08 : 0);
+    this.scale =
+      (Math.max(width / (width < 600 ? 640 : 1030), height / 940) * this.zoom) / adaptive;
     const ease = state.settings.reducedMotion ? 1 : Math.min(1, realDt * 5);
     this.camera.x += (state.player.x - this.camera.x) * ease;
     this.camera.y += (state.player.y - this.camera.y) * ease;
@@ -208,6 +230,16 @@ export class WorldRenderer {
       }
     }
     const p = state.player;
+    for (const river of state.world.terrain?.rivers ?? []) {
+      ctx.beginPath();
+      river.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      ctx.strokeStyle = '#729b9c28';
+      ctx.lineWidth = 55;
+      ctx.stroke();
+      ctx.strokeStyle = '#83b0b14a';
+      ctx.lineWidth = 24;
+      ctx.stroke();
+    }
     for (const town of state.society.settlements) {
       ctx.fillStyle = town.lost ? '#78716888' : '#d3c69c88';
       ctx.strokeStyle = '#e5d7ab';
@@ -276,6 +308,7 @@ export class WorldRenderer {
         false,
         c.juvenile > 0,
       );
+      drawEffects(ctx, state, c, t);
       const known = c.speciesId === 'player' || state.discoveries.species.includes(c.speciesId);
       if (distance(c, p) < phenotype(p.genome).vision && known) {
         ctx.font = '10px "Segoe UI", sans-serif';
@@ -284,7 +317,9 @@ export class WorldRenderer {
         ctx.fillText(
           c.speciesId === 'player'
             ? `GEN ${c.generation} · ${c.juvenile > 0 ? 'JUVENILE' : 'KIN'}`
-            : speciesById[c.speciesId].name.toUpperCase(),
+            : state.progression.apex?.id === c.id
+              ? 'ANCIENT GIANT'
+              : speciesById[c.speciesId].name.toUpperCase(),
           c.x,
           c.y + creatureRadius(c) + 18,
         );
@@ -309,6 +344,7 @@ export class WorldRenderer {
       ctx.font = '11px "Segoe UI", sans-serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#d9e9c2';
+      drawEffects(ctx, state, p, t);
       ctx.fillText('YOU', p.x, p.y - creatureRadius(p) - 36);
       ctx.beginPath();
       ctx.moveTo(p.x - 3, p.y - 48);
@@ -330,6 +366,8 @@ export class WorldRenderer {
       ctx.lineTo(this.target.x, this.target.y + 15);
       ctx.stroke();
     }
+    if (import.meta.env.DEV && this.debugLayers.size)
+      drawDebug(ctx, state, this.debugLayers, visible);
     ctx.strokeStyle = '#9abd8066';
     ctx.lineWidth = 3;
     ctx.strokeRect(20, 20, state.world.width - 40, state.world.height - 40);

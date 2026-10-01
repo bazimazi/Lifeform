@@ -2943,3 +2943,34 @@ td {
   font-size: 11px;
   color: #a8b9ae;
 }
+.behavior-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+.behavior-grid [aria-pressed='true'] {
+  border-color: #c3e99c;
+  color: #c3e99c;
+  background: #35543b;
+}
+#new-world-form select {
+  width: 100%;
+  min-height: 44px;
+  margin: 8px 0 20px;
+  padding: 10px;
+  background: #142826;
+  color: #d2e1d6;
+  border: 1px solid #b8e99833;
+  border-radius: 8px;
+}
+#body-placement-preview {
+  display: block;
+  width: 100%;
+  height: 230px;
+  touch-action: none;
+  background: #b8e99805;
+  border: 1px dashed #b8e99844;
+  border-radius: 16px;
+  cursor: crosshair;
+}

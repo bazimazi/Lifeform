@@ -1,45 +1,44 @@
 # Full-plan implementation ledger
 
-The delivered commit `ea37dc9` completed a first biological vertical slice. It did **not** complete the full product brief. This ledger tracks the expanded request to continue through the remaining plan.
+The first commit, `8f15575`, implemented a biological vertical slice. It did not implement the full brief. The expanded request has now been carried through all sixteen implementation phases using the brief's smallest-complete-version rule (section 115).
 
-Completion means working simulation behavior, usable UI, persisted state and migrations, automated verification, and documentation. A catalog entry or a locked button alone does not count as an implemented system. Human judgments such as “fun for twenty minutes” remain playtest findings, not facts established by code tests.
+This ledger describes concrete implemented behavior. It does not equate a prototype with a commercially balanced release or treat long-term content-count targets as already delivered.
 
-| Milestone                                                    | Brief sections         | Status at expansion start                                    |
-| ------------------------------------------------------------ | ---------------------- | ------------------------------------------------------------ |
-| Deterministic foundation, clock, storage, tests, debug tools | 62–72, 75, 113–120     | Working foundation; expand alongside systems                 |
-| Modular organism and readable phenotype                      | 6–11, 25, 51–59, 76    | Partial: ten organs; advanced traversal/editor missing       |
-| Resources, food web, utility AI, population fidelity         | 12–16, 77, 81          | Partial: five species and one local biome                    |
-| Combat, conditions, diseases, parasites, symbiosis           | 29–30, 48–50, 78       | Partial: bite, armor and venom                               |
-| Mutation branches and build diversity                        | 9–11, 45, 79, 100      | Partial: twenty mutations                                    |
-| Mating, genetics, offspring, growth                          | 23–25, 80              | Partial: asexual inherited genomes                           |
-| Speciation, extinction records, fossils, species tree        | 26–28, 82, 92–94       | Partial: family tree and legacy archive                      |
-| Regions, biomes, procedural exploration and pressures        | 17–22, 46, 83, 95      | Partial: one seeded biome, two pressures                     |
-| Persistent discovery unlocks and alternate starts            | 42–44, 84              | Partial: discoveries/legacy retained; starting paths missing |
-| Brain, memory, communication, tools and social behavior      | 31–35, 85              | Not implemented                                              |
-| Families, tribes, shelter, food storage and agriculture      | 32, 36, 61, 86         | Not implemented                                              |
-| Settlements, professions, economy, culture, technology       | 37–39, 60, 87          | Not implemented                                              |
-| Industry, energy, transport and research institutions        | 88                     | Not implemented                                              |
-| Orbit, expeditions, planets and interplanetary life          | 40, 89                 | Not implemented                                              |
-| Procedural challenges, generated cultures/content            | 41, 90–91, 96, 105     | Not implemented                                              |
-| Mobile UX, accessibility, audio, VFX and milestones          | 47, 52–56, 93, 101–110 | Partial; continue usability and device verification          |
+## Gameplay coverage
 
-Sections 1–5, 97–104, 112, and 123–125 provide design and sequencing constraints across the milestones. Optional live-service chores and free-to-play monetization (106, 111) are conditional product decisions, not assumed requirements to add purchases or a backend.
+| Brief sections                                      | Implementation and usable entry point                                                                                                                                                                                                                        | Verification                                                                                                     |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| 1-5: identity and roguelite loop                    | Controlled organism, inherited species branches, continuing lineage, extinction archive and new starting paths                                                                                                                                               | Succession, archive, extinction and alternate-start tests                                                        |
+| 6-11, 25, 57-59, 76, 79: construction and mutations | 30 organ modules, 50 authored mutations, constrained body slots/mass/lift, stat previews, removal, gene expression, color/proportions/drag placement, three generated variation slots                                                                        | Every mutation path validated; editor browser test; malformed-body rejection                                     |
+| 12-16, 77, 81: ecology and evolution                | 15 ecological resources, ten wildlife archetypes, food webs, utility AI, near representatives/far reserves, region totals, inherited wild-genome selection                                                                                                   | Feeding/diet, AI, population conservation, selection, deterministic replay, 24 seeded balance scenarios          |
+| 17-22, 46, 83: world                                | Six seed-arranged biomes, two named geographic reaches, relief/moisture grids, rivers, habitat-specific resources, sites, ten event templates with generated intensity, seasons and tolerances                                                               | Biome traversal, hydrology, pressure persistence and map interactions                                            |
+| 23-24, 80: reproduction and genetics                | Asexual reproduction, mating, five paired genetic loci, dominant/recessive/polygenic expression, inherited variation, maturation and two-parent records                                                                                                      | Reproduction costs, mating, genotype replay, parental care and succession                                        |
+| 26-28, 82, 92-94: ancestry and history              | Named species splits from divergence and migration, linked branches, extinction causes, fossils, discovery journals and archived worlds                                                                                                                      | Branch splitting/extinction/fossils, ancestry validation and persistence                                         |
+| 29-30, 48-50, 78: biological interactions           | Parasite transmission, immunity, cleaner symbiosis, bites/claws/venom/electricity/projectiles, wounds/heat/cold/paralysis/stun/regeneration, rare territorial giant; avoidance and defeat rewards                                                            | Damage/status tests, symbiosis logic, apex persistence, biological survival                                      |
+| 31-35, 85: behavior and intelligence                | Twelve selectable inherited behaviors, grouping/fleeing/guarding/migration/memory, deliberate brain/communication/manipulation progression, learned places and tools                                                                                         | Trait constraints, intelligence threshold, material gathering, tools and remembered-location tests               |
+| 32, 36, 61, 86: early society                       | Families, groups expressed through AI, nests, stores, shelters, agriculture/aquaculture, domestication enclosures, eleven professions, eight crafted tools and trade                                                                                         | Worker allocation, input conservation, construction, food/water and tools                                        |
+| 37-39, 60, 87: civilization                         | Aggregate settlements and cities, 27 research nodes, 21 buildings, territory disputes, diplomacy, barter/routes, food/water/housing, laws/governments, history-derived language/traditions/architecture/mythology/art/music                                  | Technology dependency traversal, economy replay, policy and exchange behavior, UI construction/work assignment   |
+| 88: industry                                        | Fuel and energy production, smelters/factories, power, roads/harbors/transport hubs, scientific institutes, renewable energy and pollution consequences                                                                                                      | Production/input accounting and all technology branches reachable                                                |
+| 40, 89: space                                       | Launch complex, orbital habitats, surveys, seeded moons/planets/asteroids and alien-life records, mining, biological colonies, supplies, habitat engineering, off-world lineage rescue                                                                       | Mission completion, costs, save replay, colony failure/survival, production survey smoke test                    |
+| 41, 90, 95, 105: renewable content                  | Fresh objectives, generated inherited adaptations, natural-selection combinations, varied event intensity, new star systems, frontier research, eleven world rules                                                                                           | Objective reward idempotence; all 66 start/rule combinations; deterministic procedural generation                |
+| 42-45, 84, 100: legacy and diversity                | Six starting organisms unlocked through play, retained discoveries and legacy, inferred build names, diverse body/behavior tradeoffs                                                                                                                         | Unlock persistence, start matrix, mutation reachability and seeded archetype comparisons                         |
+| 47, 51-56, 101-110: experience                      | Responsive HUD and map, three control modes, keyboard remapping, adaptive camera, perception overlays, scalable text, handedness, vibration, sound cues, reduced motion/particles, status effects and milestone banners                                      | Desktop/mobile interaction tests and production inspections at 1440, 768, 390 and 320 pixels                     |
+| 62-72, 75, 113-120: foundation and tools            | Versioned saves/migrations/recovery, fixed clock and independent RNG streams, spatial indexing, simulation LOD, pooled resources, local telemetry, development commands, eleven diagnostic overlay layers, headless profiling and CSV/JSON balancing reports | Save schemas 1-7, original v3 export migration, strict build, tests, browser tests, production smoke and profile |
 
-## Current work
+## Scope decisions grounded in the brief
 
-### Verified expansion checkpoints
+- Section 91 explicitly calls 100+ organs, 500+ mutations, 100+ archetypes, 50+ events and 20+ biomes **targets, not launch requirements**. Authored counts above are the implemented counts. Genetics and procedural variants create many combinations without claiming hundreds of authored assets.
+- Sections 96 and 123 describe continuing expansion and the long-term north star. The registries and generated frontiers support that direction; a promise to ship future content is not an implemented feature.
+- Section 106 conditions daily/weekly operations on choosing live operations. This local game has renewable objectives without a calendar service or obligatory chores.
+- Section 111 conditions monetization on choosing free-to-play. No purchases, advertisements or commerce backend were added.
+- Sections 97-99 favor selective simulation and causal clarity. Societies use aggregate citizens and material flows; space uses timed expeditions and aggregate colonies. There is no individual city-agent simulation or separately controlled 3D planet surface.
+- Section 122's enjoyment, retention and physical-phone targets require human/device evidence. Automated scenarios and desktop mobile emulation cannot establish those claims.
 
-- Biological expansion (`6607579`): six continuous biomes, 30 organs, 50 mutations, ten species, 15 resources, ten environmental events, mating and inherited genes, five diseases, symbiosis, nests, species branching, fossils, body appearance, and schema 4 migration. Five additional biological tests passed alongside the original suite.
-- Intelligence through space: learning and remembered resources; eight crafted tools; eleven professions; settlement growth and collapse; 21 buildings; 27 researched technologies; material inputs/outputs; trade, conflict and policies; history-derived culture; pollution; orbital habitats; surveys and alien-life records; mining; colonies, supplies and habitat engineering; repeatable star systems and scientific projects. Schema 6 migrates prior saves. Forty simulation tests and twelve desktop/mobile browser tests pass, including actual crafting, construction, work assignment and a survey launch. Society and mobile space layouts inspected.
+## Verified milestones
 
-The initial-status table above is retained as the starting audit. These checkpoints do not yet close the complete brief: procedural evolution/objectives, alternate starts/world rules, richer behavioral/status interactions, and final full-scope verification remain in progress.
+1. `8f15575`: initial playable biology and save foundation.
+2. `6607579`: biomes, advanced organs, genetics, conditions and species branches.
+3. `b18f91b`: intelligence, society, civilization, industry and space.
+4. Version 0.2.0: procedural replay, behavioral ecology, alternate starts, challenges, terrain/hydrology, complete editor controls, feedback, diagnostics and broad verification.
 
-Expand the biological game first: environmental traversal, regions, diseases/statuses, richer content, mating/genetics, speciation and discovery unlocks. Keep existing v1–v3 saves readable. Validate each milestone before moving to the next.
-
-## Release gates
-
-- All simulation and browser regression tests pass.
-- Deterministic save/load replay remains intact.
-- Stateful additions have migrations, validation and inspectable causes.
-- Mobile layouts and actual gameplay actions are inspected.
-- Physical-device performance and human balance/fun testing are reported separately from automated checks.
+See [verification](VERIFICATION.md) for measured results and [playtesting](PLAYTEST.md) for release validation. The project contains playable implementations across the requested progression; physical-device qualification, broader browser coverage and human balance/fun approval remain release work.

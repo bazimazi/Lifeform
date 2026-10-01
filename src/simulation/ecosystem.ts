@@ -1,3 +1,5 @@
+import { activePressure } from '../world/pressures';
+import { tickReplay, naturalSelection } from '../progression/replay';
 import { tickSpace } from '../space/space';
 import type { ActionResult, Creature, GameState, Input, Resource, Vec } from '../core/types';
 import { phenotype, dietFor } from '../biology/body';
@@ -11,7 +13,13 @@ import { populationDeath, updatePopulations } from './population';
 import { traversal, exploreRegion } from '../world/regions';
 import { environmentNeeds, movementCondition, addStatus } from '../biology/conditions';
 import { evaluateMilestones, reconcileBranches } from '../progression/lineage';
-import { tickSociety, toolBonus, learnPlace, citizenSuccessor } from '../society/society';
+import {
+  tickSociety,
+  toolBonus,
+  learnPlace,
+  citizenSuccessor,
+  shelterDefense,
+} from '../society/society';
 
 export const emptyInput = (): Input => ({ x: 0, y: 0, target: null, sprint: false, action: false });
 
@@ -29,6 +37,7 @@ export class Simulation {
     const s = this.state;
     if (s.lineage.extinct) return;
     const dt = TUNING.step;
+    const oldPoints = s.lineage.points;
     s.tick++;
     s.time = s.tick * dt;
     const p = s.player;
@@ -79,6 +88,7 @@ export class Simulation {
       evaluateMilestones(s);
       tickSociety(s, TUNING.needsInterval);
       tickSpace(s, TUNING.needsInterval);
+      tickReplay(s);
     }
     if (s.tick % Math.round(TUNING.populationInterval / dt) === 0) updatePopulations(s);
     if (s.pressure) {
@@ -90,11 +100,18 @@ export class Simulation {
           'The water settles',
           'The environmental pressure passes. Resource growth returns to normal.',
         );
+        s.progression.pressureSurvived++;
         s.pressure = null;
       }
     } else if (s.time >= s.nextEventAt) {
-      this.triggerPressure(PRESSURES[Math.floor(random(s.rng, 'event') * PRESSURES.length)].id);
+      this.triggerPressure(
+        PRESSURES[Math.floor(random(s.rng, 'event') * PRESSURES.length)].id,
+        true,
+      );
     }
+    if (s.tick % 1800 === 0) naturalSelection(s);
+    if (s.evolution.challenge === 'rapid' && s.lineage.points > oldPoints)
+      s.lineage.points += s.lineage.points - oldPoints;
     const cell = `${Math.floor(p.x / TUNING.explorationRegionSize)},${Math.floor(p.y / TUNING.explorationRegionSize)}`;
     if (!s.world.visited.includes(cell)) {
       s.world.visited.push(cell);
@@ -115,6 +132,11 @@ export class Simulation {
     const stats = phenotype(c.genome);
     const amount =
       stats.speed *
+      (this.state.evolution.challenge === 'high-gravity'
+        ? 0.7
+        : this.state.evolution.challenge === 'low-gravity'
+          ? 1.25
+          : 1) *
       (c.id === this.state.player.id ? 1 + toolBonus(this.state, 'travel') : 1) *
       traversal(this.state, c, {
         x: c.x + (direction.x / length) * 10,
@@ -150,11 +172,14 @@ export class Simulation {
     c.health = Math.min(stats.health, c.health + definition.energy * TUNING.feedingHealingRatio);
     c.poison += definition.toxicity;
     food.active = false;
-    food.regrowAt = this.state.time + definition.growth;
+    food.regrowAt =
+      this.state.time + definition.growth * (this.state.evolution.challenge === 'scarcity' ? 2 : 1);
     if (c.id === this.state.player.id) {
       const s = this.state;
       learnPlace(s, food.type, food);
       s.lineage.biomass += definition.biomass;
+      s.telemetry.first ??= {};
+      s.telemetry.first.food ??= s.time;
       s.telemetry.foodEaten++;
       if (!s.discoveries.resources.includes(food.type)) {
         s.discoveries.resources.push(food.type);
@@ -189,6 +214,9 @@ export class Simulation {
       .filter((other) => {
         if (other.id === c.id || other.health <= 0 || (isPlayer && other.speciesId === 'player'))
           return false;
+        if (!isPlayer && shelterDefense(this.state, other) >= stats.attack) return false;
+        if (phenotype(other.genome).flight > 0 && stats.flight <= 0 && stats.projectile <= 0)
+          return false;
         return isPlayer || speciesById[c.speciesId].prey.includes(other.speciesId);
       })
       .sort((a, b) => distance(c, a) - distance(c, b));
@@ -201,10 +229,19 @@ export class Simulation {
         (c.id === this.state.player.id ? toolBonus(this.state, 'hunt', 1) : 0) -
         phenotype(target.genome).defense,
     );
+    c.angle = Math.atan2(target.y - c.y, target.x - c.x);
     c.attackCooldown = TUNING.attackInterval;
     c.energy -= TUNING.attackEnergy;
     target.health -= damage;
     target.poison += stats.venom;
+    if (c.genome.traits?.includes('parasitic')) {
+      const drain = Math.min(target.energy, 6);
+      target.energy -= drain;
+      c.energy = Math.min(stats.energy, c.energy + drain);
+    }
+    if (c.genome.organs.includes('claws'))
+      addStatus(this.state, target, 'bleeding', 8, 'Claw wound');
+    if (stats.venom >= 5) addStatus(this.state, target, 'paralyzed', 3, 'Neurotoxin');
     if (stats.electricity > 0) addStatus(this.state, target, 'stunned', 2, 'Electric organ');
     if (target.health <= 0) {
       this.die(
@@ -234,7 +271,8 @@ export class Simulation {
     c.age += dt;
     c.attackCooldown = Math.max(0, c.attackCooldown - dt);
     c.reproductionCooldown = Math.max(0, c.reproductionCooldown - dt);
-    const sunlight = PRESSURES.find((p) => p.id === this.state.pressure?.id)?.light ?? 1;
+    const sunlight =
+      this.state.evolution.challenge === 'dark' ? 0 : (activePressure(this.state)?.light ?? 1);
     c.energy = clamp(
       c.energy + (stats.photosynthesis * sunlight - TUNING.baseEnergyDrain - stats.metabolism) * dt,
       0,
@@ -271,6 +309,12 @@ export class Simulation {
     const reusable = s.resources.findIndex((r) => !r.active);
     if (reusable >= 0) s.resources[reusable] = remains;
     else if (s.resources.length < TUNING.resourceCount + 60) s.resources.push(remains);
+    if (s.progression.apex?.id === c.id) {
+      s.progression.apex.defeated = true;
+      s.lineage.points += 4;
+      s.lineage.legacy += 5;
+      record(s, 'milestone', 'The giant falls', cause);
+    }
     if (c.speciesId !== 'player') {
       populationDeath(s, c.speciesId, cause);
       return;
@@ -316,7 +360,7 @@ export class Simulation {
   }
   private regrow() {
     const s = this.state;
-    const pressure = PRESSURES.find((p) => p.id === s.pressure?.id);
+    const pressure = activePressure(s);
     for (const r of s.resources) {
       if (
         !r.active &&
@@ -352,12 +396,30 @@ export class Simulation {
       );
     }
   }
-  triggerPressure(id: string): ActionResult {
+  triggerPressure(id: string, generated = false): ActionResult {
     const pressure = PRESSURES.find((p) => p.id === id);
     if (!pressure) return { ok: false, message: 'Unknown environmental pressure.' };
-    this.state.pressure = { id, remaining: pressure.duration ?? TUNING.pressureDuration };
-    this.state.nextEventAt = this.state.time + TUNING.pressureInterval + TUNING.pressureDuration;
-    record(this.state, 'environment', pressure.name, pressure.description);
+    const severity = generated ? 0.7 + random(this.state.rng, 'event') * 0.9 : 1;
+    const name = generated
+      ? `${severity > 1.2 ? 'Severe' : severity < 0.9 ? 'Passing' : 'Seasonal'} ${pressure.name.toLowerCase()}`
+      : pressure.name;
+    this.state.pressure = {
+      id,
+      remaining: (pressure.duration ?? TUNING.pressureDuration) * severity,
+      severity,
+      name,
+    };
+    this.state.nextEventAt =
+      this.state.time +
+      (this.state.evolution.challenge === 'extinction'
+        ? 75
+        : TUNING.pressureInterval + TUNING.pressureDuration);
+    record(
+      this.state,
+      'environment',
+      name,
+      `${pressure.description} Intensity ${Math.round(severity * 100)}%. Migrate, seek shelter, or adapt your body.`,
+    );
     return { ok: true, message: pressure.name };
   }
   refresh() {

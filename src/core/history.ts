@@ -2,6 +2,8 @@ import type { GameState, LegacyRecord } from './types';
 import { TUNING } from '../data/content';
 
 export function record(state: GameState, type: string, title: string, detail: string) {
+  state.telemetry.first ??= {};
+  state.telemetry.first[type] ??= state.time;
   state.history.push({
     id: state.nextId++,
     time: state.time,
@@ -25,5 +27,6 @@ export function legacyRecord(state: GameState, cause: string): LegacyRecord {
     evolution: structuredClone(state.evolution),
     society: structuredClone(state.society),
     space: structuredClone(state.space),
+    progression: structuredClone(state.progression),
   };
 }

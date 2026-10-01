@@ -1,3 +1,7 @@
+import { archetypes } from './biology/archetype';
+import { DEBUG_LAYERS } from './presentation/debug-overlay';
+import { activePressure } from './world/pressures';
+import { DEFAULT_KEYS, validBindings } from './core/controls';
 import './style.css';
 import { createGame } from './world/generation';
 import { Simulation, emptyInput } from './simulation/ecosystem';
@@ -11,8 +15,8 @@ import {
 } from './biology/reproduction';
 import { saveGame, loadGame, encodeSave, decodeSave } from './core/save';
 import { debugCommand } from './core/debug';
-import { legacyRecord } from './core/history';
-import { TUNING, PRESSURES } from './data/content';
+import { legacyRecord, record } from './core/history';
+import { TUNING } from './data/content';
 import type { GameState, ActionResult, Settings } from './core/types';
 import { WorldRenderer } from './presentation/world';
 import { drawPreview } from './presentation/creature';
@@ -20,6 +24,8 @@ import { AudioFeedback } from './presentation/audio';
 import { icon, escapeHtml as esc } from './presentation/icons';
 import * as ui from './presentation/ui';
 import * as evolutionUI from './presentation/evolution-ui';
+import * as replayUI from './presentation/replay-ui';
+import * as replay from './progression/replay';
 import * as societyUI from './presentation/society-ui';
 import * as society from './society/society';
 import * as space from './space/space';
@@ -60,6 +66,8 @@ let toastTimeout = 0,
   lastEventId = 0,
   lastFood = 0,
   lastDeath = 0;
+let lastAudioCue = -10;
+let bannerTimeout = 0;
 let previousFrame = performance.now(),
   accumulator = 0,
   uiElapsed = 0,
@@ -98,6 +106,7 @@ function result(action: ActionResult, sound?: 'mutation' | 'birth') {
   notify(action.message, !action.ok);
   if (action.ok) {
     if (sound && sim.state.settings.sound) audio.play(sound);
+    if (sound && sim.state.settings.vibration) navigator.vibrate?.(35);
     sim.refresh();
     refreshPanels(true);
     save();
@@ -156,17 +165,19 @@ function refreshPanels(force = false) {
   if (view !== 'habitat')
     get('secondary-panel').innerHTML =
       view === 'creature'
-        ? ui.creatureView(s) + evolutionUI.geneticsPanel(s)
+        ? ui.creatureView(s) + evolutionUI.geneticsPanel(s) + replayUI.adaptivePanel(s)
         : view === 'lineage'
           ? ui.lineageView(s) + evolutionUI.branchesPanel(s)
           : view === 'society'
             ? societyUI.societyView(s)
-            : ui.discoveryView(s);
+            : ui.discoveryView(s) + replayUI.replayPanel(s);
 }
 function updateHud() {
   const s = sim.state,
     p = s.player,
     stats = phenotype(p.genome);
+  const caption = document.querySelector('.specimen-caption');
+  if (caption) caption.textContent = archetypes(p.genome).join(' / ') || 'PRIMORDIAL ORGANISM';
   get('generation').textContent = `GEN ${String(p.generation).padStart(2, '0')}`;
   get('lineage-name').textContent = s.lineage.name;
   get('organism-subtitle').textContent =
@@ -225,7 +236,7 @@ function updateHud() {
   get('pause-button').setAttribute('aria-label', running() ? 'Pause world' : 'Resume world');
   get('paused-badge').hidden = !started || running() || s.lineage.extinct;
   get('welcome').hidden = started || s.lineage.extinct;
-  const pressure = PRESSURES.find((x) => x.id === s.pressure?.id);
+  const pressure = activePressure(s);
   const local = climate(s, p);
   get('environment-badge').innerHTML =
     `${icon(local.biome.aquatic ? 'drop' : 'sun')}<span>${esc(pressure?.name ?? local.biome.name)}<small>${local.temperature.toFixed(0)} C / ${pressure ? `${Math.ceil(s.pressure!.remaining)}s remaining` : regionAt(s, p).name}</small></span>`;
@@ -259,10 +270,49 @@ function updateHud() {
     const last = s.history.at(-1)!;
     if (started && ['inheritance', 'environment', 'opportunity'].includes(last.type))
       notify(last.title);
+    if (started && ['milestone', 'travel', 'environment'].includes(last.type)) {
+      if (s.settings.sound)
+        audio.play(
+          last.type === 'milestone' ? 'milestone' : last.type === 'travel' ? 'travel' : 'danger',
+        );
+      if (s.settings.vibration) navigator.vibrate?.(last.type === 'milestone' ? [40, 60, 40] : 40);
+      if (last.type === 'milestone') {
+        const banner = get('event-banner');
+        banner.textContent = last.title;
+        banner.hidden = false;
+        window.clearTimeout(bannerTimeout);
+        bannerTimeout = window.setTimeout(() => (banner.hidden = true), 6000);
+      }
+    }
     lastEventId = s.history.at(-1)?.id ?? 0;
   }
   if (s.settings.sound && s.telemetry.foodEaten > lastFood) audio.play('food');
   if (s.settings.sound && s.telemetry.deaths > lastDeath) audio.play('death');
+  if (s.settings.sound && running() && s.time - lastAudioCue > 4) {
+    const nearby = s.creatures.find(
+      (c) =>
+        c.speciesId !== 'player' &&
+        phenotype(c.genome).attack > 8 &&
+        Math.hypot(c.x - p.x, c.y - p.y) < 180,
+    );
+    const food = s.resources.some((r) => r.active && Math.hypot(r.x - p.x, r.y - p.y) < 100);
+    const cue =
+      p.health < stats.health * 0.3
+        ? 'heartbeat'
+        : p.energy < stats.energy * 0.25
+          ? 'hunger'
+          : nearby
+            ? 'predator'
+            : food
+              ? 'nearby-food'
+              : Math.hypot(input.x, input.y) > 0.1
+                ? 'movement'
+                : null;
+    if (cue) {
+      audio.play(cue);
+      lastAudioCue = s.time;
+    }
+  }
   lastFood = s.telemetry.foodEaten;
   lastDeath = s.telemetry.deaths;
   if (s.lineage.extinct && !extinctionShown) {
@@ -280,6 +330,15 @@ app.addEventListener('click', (event) => {
     value = button.dataset.value ?? '';
   switch (action) {
     case 'begin':
+      if (!started) {
+        sim.state.telemetry.sessions = (sim.state.telemetry.sessions ?? 0) + 1;
+        record(
+          sim.state,
+          'session',
+          'A new observation begins',
+          'The lineage returns to the living world.',
+        );
+      }
       started = true;
       paused = false;
       get<HTMLCanvasElement>('world').focus({ preventScroll: true });
@@ -398,9 +457,23 @@ app.addEventListener('click', (event) => {
           },
         },
       };
+      const ancestor = sim.state.lineage.archive.find((a) => a.id === p.id);
+      if (ancestor) ancestor.genome = structuredClone(p.genome);
       result({ ok: true, message: 'Body design saved and inherited by future offspring.' });
       break;
     }
+    case 'objective-claim':
+      result(replay.claimObjective(sim.state, value));
+      break;
+    case 'variation-adopt':
+      result(replay.adoptVariation(sim.state, value), 'mutation');
+      break;
+    case 'variation-remove':
+      result(replay.removeVariation(sim.state, value));
+      break;
+    case 'trait-adopt':
+      result(replay.adoptTrait(sim.state, value));
+      break;
     case 'space':
       showDialog(ui.dialogFrame('A lineage among the stars', spacePanel(sim.state)));
       break;
@@ -481,6 +554,13 @@ app.addEventListener('click', (event) => {
       }
       break;
     }
+    case 'debug-layer':
+      if (import.meta.env.DEV) {
+        if (renderer.debugLayers.has(value)) renderer.debugLayers.delete(value);
+        else renderer.debugLayers.add(value);
+        showDebug();
+      }
+      break;
     case 'debug':
       if (import.meta.env.DEV) showDebug();
       break;
@@ -495,19 +575,86 @@ app.addEventListener('click', (event) => {
 });
 app.addEventListener('change', (event) => {
   const target = event.target as HTMLInputElement | HTMLSelectElement;
+  if (target.id === 'placement-organ') {
+    const p = sim.state.player.genome.appearance?.placements[target.value] ?? { x: 0, y: 0 };
+    get<HTMLInputElement>('placement-x').value = String(p.x);
+    get<HTMLInputElement>('placement-y').value = String(p.y);
+  }
   const key = target.dataset.setting as keyof Settings | undefined;
   if (!key) return;
   if (key === 'control' && ['hybrid', 'direct', 'touch'].includes(target.value))
     sim.state.settings.control = target.value as Settings['control'];
-  else if (target instanceof HTMLInputElement && target.type === 'checkbox' && key !== 'control')
+  else if (
+    target instanceof HTMLInputElement &&
+    target.type === 'checkbox' &&
+    key !== 'control' &&
+    key !== 'keys'
+  )
     sim.state.settings[key] = target.checked;
   updateHud();
   save();
 });
+app.addEventListener('input', (event) => {
+  const target = event.target as HTMLInputElement;
+  if (target.id === 'mutation-search') {
+    const text = target.value.toLowerCase();
+    dialog
+      .querySelectorAll<HTMLElement>('.mutation-card')
+      .forEach((card) => (card.hidden = !card.textContent?.toLowerCase().includes(text)));
+  }
+});
+let organDrag: number | null = null;
+function positionOrgan(event: PointerEvent) {
+  const canvas = get<HTMLCanvasElement>('body-placement-preview');
+  if (!canvas) return;
+  const r = canvas.getBoundingClientRect(),
+    x = Math.max(-1, Math.min(1, (event.clientX - r.left - r.width / 2) / (r.width * 0.35))),
+    y = Math.max(-1, Math.min(1, (event.clientY - r.top - r.height / 2) / (r.height * 0.35)));
+  get<HTMLInputElement>('placement-x').value = String(Math.round(x * 10) / 10);
+  get<HTMLInputElement>('placement-y').value = String(Math.round(y * 10) / 10);
+  const g = sim.state.player.genome,
+    id = get<HTMLSelectElement>('placement-organ').value;
+  g.appearance ??= { color: '#b8e998', proportions: 1, placements: {} };
+  g.appearance.placements[id] = { x, y };
+}
+app.addEventListener('pointerdown', (event) => {
+  if ((event.target as HTMLElement).id !== 'body-placement-preview') return;
+  organDrag = event.pointerId;
+  (event.target as HTMLElement).setPointerCapture(event.pointerId);
+  positionOrgan(event);
+});
+app.addEventListener('pointermove', (event) => {
+  if (event.pointerId === organDrag) positionOrgan(event);
+});
+app.addEventListener('pointerup', (event) => {
+  if (event.pointerId !== organDrag) return;
+  organDrag = null;
+  const a = sim.state.lineage.archive.find((a) => a.id === sim.state.player.id);
+  if (a) a.genome = structuredClone(sim.state.player.genome);
+  save();
+});
+app.addEventListener('pointercancel', () => {
+  organDrag = null;
+});
 app.addEventListener('submit', (event) => {
   event.preventDefault();
   const form = event.target as HTMLFormElement;
-  if (form.id === 'new-world-form') {
+  if (form.id === 'keybindings-form') {
+    const values = new FormData(form);
+    const bindings = Object.fromEntries(
+      Object.keys(DEFAULT_KEYS).map((k) => {
+        const v = String(values.get(k) ?? '').toLowerCase();
+        return [k, v === 'space' ? ' ' : v];
+      }),
+    );
+    if (!validBindings(bindings)) {
+      notify('Use distinct letter, number, arrow, shift, or space keys.', true);
+      return;
+    }
+    sim.state.settings.keys = bindings;
+    save();
+    notify('Keyboard controls saved.');
+  } else if (form.id === 'new-world-form') {
     const seed = String(new FormData(form).get('seed') ?? '').trim();
     if (!seed) return;
     const old = sim.state,
@@ -518,6 +665,17 @@ app.addEventListener('submit', (event) => {
     next.discoveries = structuredClone(old.discoveries);
     next.settings = structuredClone(old.settings);
     next.evolution.unlocks = [...new Set(old.evolution.unlocks)];
+    const options = new FormData(form);
+    const setup = replay.configureStart(
+      next,
+      String(options.get('path') ?? 'microbe'),
+      String(options.get('challenge') ?? 'normal'),
+      next.evolution.unlocks,
+    );
+    if (!setup.ok) {
+      notify(setup.message, true);
+      return;
+    }
     replaceWorld(next);
     saveProtected = false;
     save();
@@ -588,6 +746,14 @@ function showDebug() {
       `<p class="dialog-intro">Local development tools. The world is paused. No telemetry leaves this browser.</p><div class="debug-metrics">${Object.entries(
         {
           ...metrics,
+          sessions: s.telemetry.sessions ?? 0,
+          'active play seconds': Math.floor(s.telemetry.activeSeconds ?? 0),
+          'average session seconds': Math.floor(
+            (s.telemetry.activeSeconds ?? 0) / Math.max(1, s.telemetry.sessions ?? 0),
+          ),
+          ...Object.fromEntries(
+            Object.entries(s.telemetry.first ?? {}).map(([k, v]) => ['first ' + k, Math.floor(v)]),
+          ),
           'last step ms': lastStepMs.toFixed(2),
           'max step ms': maxStepMs.toFixed(2),
           'food eaten': s.telemetry.foodEaten,
@@ -600,7 +766,7 @@ function showDebug() {
         .map(([k, v]) => `<span>${k}<b>${v}</b></span>`)
         .join(
           '',
-        )}</div><div class="table-scroll"><table><thead><tr><th>Species</th><th>Pop.</th><th>Births</th><th>Deaths</th><th>Food</th><th>Fitness</th></tr></thead><tbody>${s.populations.map((p) => `<tr><td>${p.speciesId}</td><td>${p.count}</td><td>${p.births}</td><td>${p.deaths}</td><td>${p.food.toFixed(2)}</td><td>${p.fitness.toFixed(2)}</td></tr>`).join('')}</tbody></table></div><div class="button-row">${[
+        )}</div><div class="behavior-grid">${DEBUG_LAYERS.map((layer) => `<button class="secondary-button" data-action="debug-layer" data-value="${layer}" aria-pressed="${renderer.debugLayers.has(layer)}">${layer}</button>`).join('')}</div><div class="table-scroll"><table><thead><tr><th>Species</th><th>Pop.</th><th>Births</th><th>Deaths</th><th>Food</th><th>Fitness</th></tr></thead><tbody>${s.populations.map((p) => `<tr><td>${p.speciesId}</td><td>${p.count}</td><td>${p.births}</td><td>${p.deaths}</td><td>${p.food.toFixed(2)}</td><td>${p.fitness.toFixed(2)}</td></tr>`).join('')}</tbody></table></div><div class="button-row">${[
         ['drought', 'Drought'],
         ['bloom', 'Food bloom'],
         ['advance 30', '+30 seconds'],
@@ -622,7 +788,8 @@ const editable = (target: EventTarget | null) =>
   (!!target.closest('input, select, textarea') || target.isContentEditable);
 window.addEventListener('keydown', (event) => {
   if (editable(event.target) || dialog.open) return;
-  const key = event.key.toLowerCase();
+  const key = event.key.toLowerCase(),
+    bindings = sim.state.settings.keys ?? DEFAULT_KEYS;
   if (
     [
       ' ',
@@ -637,17 +804,18 @@ window.addEventListener('keydown', (event) => {
       'shift',
       'p',
       'r',
-    ].includes(key)
+    ].includes(key) ||
+    Object.values(bindings).includes(key)
   )
     event.preventDefault();
-  if (!event.repeat && key === 'p') {
+  if (!event.repeat && key === bindings.pause) {
     if (!started) started = true;
     else paused = !paused;
     clearControls();
     updateHud();
     return;
   }
-  if (!event.repeat && key === 'r' && started) {
+  if (!event.repeat && key === bindings.reproduce && started) {
     result(reproduce(sim.state), 'birth');
     return;
   }
@@ -661,7 +829,15 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && started && !saveProtected) save();
 });
 window.addEventListener('pagehide', () => {
-  if (started && !saveProtected) save();
+  if (started && !saveProtected) {
+    record(
+      sim.state,
+      'session-end',
+      'An observation ends',
+      'Progress is retained for the next visit.',
+    );
+    save();
+  }
 });
 dialog.addEventListener('close', () => {
   clearControls();
@@ -736,16 +912,18 @@ function frame(now: number) {
   const dt = Math.min((now - previousFrame) / 1000, 0.1);
   previousFrame = now;
   if (running()) {
+    sim.state.telemetry.activeSeconds = (sim.state.telemetry.activeSeconds ?? 0) + dt;
+    const bindings = sim.state.settings.keys ?? DEFAULT_KEYS;
     input.x =
-      (keys.has('d') || keys.has('arrowright') ? 1 : 0) -
-      (keys.has('a') || keys.has('arrowleft') ? 1 : 0) +
+      (keys.has(bindings.right) || keys.has('arrowright') ? 1 : 0) -
+      (keys.has(bindings.left) || keys.has('arrowleft') ? 1 : 0) +
       stickX;
     input.y =
-      (keys.has('s') || keys.has('arrowdown') ? 1 : 0) -
-      (keys.has('w') || keys.has('arrowup') ? 1 : 0) +
+      (keys.has(bindings.down) || keys.has('arrowdown') ? 1 : 0) -
+      (keys.has(bindings.up) || keys.has('arrowup') ? 1 : 0) +
       stickY;
-    input.action = keys.has(' ') || touchAction;
-    input.sprint = keys.has('shift') || touchSprint;
+    input.action = keys.has(bindings.action) || touchAction;
+    input.sprint = keys.has(bindings.sprint) || touchSprint;
     if (input.x || input.y) input.target = null;
     accumulator = Math.min(accumulator + dt * speed, TUNING.step * 12);
     while (accumulator >= TUNING.step) {

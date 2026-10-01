@@ -658,6 +658,28 @@ export const BIOMES: BiomeDefinition[] = [
   },
 ];
 export const DISEASES: DiseaseDefinition[] = [
+  ...(
+    [
+      ['bleeding', 'Bleeding', 0.6, 0, 1, 'immunity'],
+      ['burning', 'Burning', 1.1, 0.2, 1, 'heatTolerance'],
+      ['frozen', 'Frozen', 0.2, 0.15, 0.25, 'coldTolerance'],
+      ['exhausted', 'Exhausted', 0, 0, 0.55, 'immunity'],
+      ['paralyzed', 'Paralyzed', 0, 0.1, 0.1, 'toxinResistance'],
+      ['regenerating', 'Regenerating', -0.6, 0.1, 1, 'immunity'],
+    ] as const
+  ).map(([id, name, damage, energyDrain, speedMultiplier, resistance]) => ({
+    id,
+    name,
+    description: `${name} changes biological function until it passes.`,
+    transmission: 0,
+    incubation: 0,
+    duration: 12,
+    damage,
+    energyDrain,
+    speedMultiplier,
+    resistance,
+    biomes: [],
+  })),
   {
     id: 'marsh-fever',
     name: 'Marsh fever',

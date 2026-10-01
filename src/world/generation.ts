@@ -1,3 +1,5 @@
+import { createTerrain } from './terrain';
+import { createProgression } from '../progression/replay';
 import { createSpace } from '../space/space';
 import { streams, random } from '../core/random';
 import type { Creature, GameState, Genome, RngStreams } from '../core/types';
@@ -37,6 +39,7 @@ export function creature(
   };
 }
 export function createGame(seed = 'FIRST-LIGHT'): GameState {
+  seed = seed.trim().slice(0, 80) || 'FIRST-LIGHT';
   const rng = streams(seed.trim().slice(0, 80) || 'FIRST-LIGHT');
   const player = creature(
     'ancestor-1',
@@ -46,7 +49,7 @@ export function createGame(seed = 'FIRST-LIGHT'): GameState {
     TUNING.worldHeight * 0.75,
   );
   const state: GameState = {
-    schemaVersion: 6,
+    schemaVersion: 7,
     seed: seed.trim().slice(0, 80) || 'FIRST-LIGHT',
     time: 0,
     tick: 0,
@@ -115,6 +118,7 @@ export function createGame(seed = 'FIRST-LIGHT'): GameState {
     legacies: [],
     society: createSociety(),
     space: createSpace(seed),
+    progression: createProgression(seed),
     evolution: createEvolution(seed, TUNING.worldWidth, TUNING.worldHeight, player, [
       {
         id: player.id,
@@ -162,13 +166,28 @@ export function createGame(seed = 'FIRST-LIGHT'): GameState {
           y: region.y + 60 + random(rng, 'species') * (region.height - 120),
         };
       }
-      if (species.prey.includes('player') && Math.hypot(p.x - player.x, p.y - player.y) < 500)
-        p = { x: 160 + i * 80, y: 150 };
+      if (species.prey.includes('player') && Math.hypot(p.x - player.x, p.y - player.y) < 500) {
+        const remote = [...suitable].sort(
+          (a, b) =>
+            Math.hypot(b.x + b.width / 2 - player.x, b.y + b.height / 2 - player.y) -
+            Math.hypot(a.x + a.width / 2 - player.x, a.y + a.height / 2 - player.y),
+        )[0];
+        p = {
+          x: remote.x + 60 + ((i % 4) * (remote.width - 120)) / 3,
+          y: remote.y + 60 + (i % 2) * (remote.height - 120),
+        };
+      }
       if (i === 0 && species.id === 'grazer') p = { x: player.x - 165, y: player.y - 150 };
       if (i === 0 && species.id === 'filterer') p = { x: player.x + 200, y: player.y + 200 };
       state.creatures.push(creature(`${species.id}-${i}`, species.id, species.genome, p.x, p.y));
     }
   }
+  state.world.terrain = createTerrain(
+    seed,
+    state.world.width,
+    state.world.height,
+    state.evolution.regions,
+  );
   settleResources(state);
   state.world.biome = regionAt(state, player).name;
   record(

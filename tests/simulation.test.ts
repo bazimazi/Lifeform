@@ -22,8 +22,9 @@ function ready(state = createGame()) {
   return state;
 }
 function quiet(state = createGame()) {
-  // Remove represented wildlife consistently; far counts remain aggregate populations.
+  // Isolate individual biology from wildlife; zero far counts so no cohort respawns.
   state.creatures = [];
+  for (const population of state.populations) population.count = 0;
   return state;
 }
 function advance(sim: Simulation, seconds: number) {
@@ -246,6 +247,7 @@ test('combat is organ-driven, honors armor and creates food after death', () => 
   );
   prey.health = 1;
   state.creatures.push(prey);
+  state.populations[0].count = 1;
   const sim = new Simulation(state),
     population = state.populations[0].count;
   assert.ok(sim.act().ok);
@@ -269,6 +271,25 @@ test('utility AI flees immediate threats and seeks compatible food when hungry',
     { id: 999, type: 'green-algae', x: grazer.x + 30, y: grazer.y, active: true, regrowAt: 0 },
   ]);
   assert.equal(chooseGoal(state, grazer, agents, resources).name, 'feed');
+});
+test('predators defer hunting while fed and hunt when hungry', () => {
+  const s = createGame(),
+    predator = creature(
+      'predator',
+      'stalker',
+      SPECIES.find((x) => x.id === 'stalker')!.genome,
+      500,
+      500,
+    ),
+    prey = creature('prey', 'grazer', SPECIES[0].genome, 520, 500);
+  const agents = new SpatialGrid<Creature>(),
+    resources = new SpatialGrid<Resource>();
+  agents.rebuild([predator, prey]);
+  resources.rebuild([]);
+  predator.energy = phenotype(predator.genome).energy;
+  assert.notEqual(chooseGoal(s, predator, agents, resources).name, 'hunt');
+  predator.energy = 10;
+  assert.equal(chooseGoal(s, predator, agents, resources).name, 'hunt');
 });
 test('drought changes food fitness and documents its causal population pressure', () => {
   const normal = createGame('pressure'),
@@ -338,7 +359,7 @@ test('v2 summary-only legacy records migrate without inventing missing history',
     },
   ];
   const migrated = decodeSave(JSON.stringify(old));
-  assert.equal(migrated.schemaVersion, 6);
+  assert.equal(migrated.schemaVersion, 7);
   assert.equal(migrated.legacies[0].name, 'Earlier Velari');
   assert.deepEqual(migrated.legacies[0].archive, []);
   assert.deepEqual(migrated.legacies[0].history, []);
@@ -359,7 +380,7 @@ test('v1 saves migrate with accessibility defaults, stamina, telemetry, and lega
   delete old.legacies;
   delete old.player.stamina;
   const migrated = decodeSave(JSON.stringify(old));
-  assert.equal(migrated.schemaVersion, 6);
+  assert.equal(migrated.schemaVersion, 7);
   assert.equal(migrated.player.stamina, 100);
   assert.equal(migrated.settings.control, 'hybrid');
 });

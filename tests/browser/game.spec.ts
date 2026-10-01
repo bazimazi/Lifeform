@@ -12,6 +12,80 @@ const snapshot = (page: Page): Promise<GameState> =>
 const command = (page: Page, text: string) =>
   page.evaluate((value) => (window as any).lifeform.command(value), text);
 
+test('adaptation search and all eleven diagnostic layers are usable', async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+  await page.locator('.all-adaptations').click();
+  await page.locator('#mutation-search').fill('Remember, then imagine');
+  await expect(page.locator('.mutation-gallery .mutation-card:visible')).toHaveCount(1);
+  await page.locator('#mutation-search').fill('');
+  await expect(page.locator('.mutation-gallery .mutation-card:visible')).toHaveCount(50);
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.locator('[data-action="debug"]').click();
+  const values = await page
+    .locator('[data-action="debug-layer"]')
+    .evaluateAll((nodes) => nodes.map((n) => (n as HTMLElement).dataset.value!));
+  expect(values).toHaveLength(11);
+  for (const value of values) {
+    const control = page.locator(`[data-action="debug-layer"][data-value="${value}"]`);
+    await control.click();
+    await expect(control).toHaveAttribute('aria-pressed', 'true');
+  }
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.locator('[data-action="begin"]').click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `artifacts/${testInfo.project.name}-diagnostics.png` });
+  expect(errors).toEqual([]);
+});
+
+test('organ placement, behavioral choices, key remapping and challenge starts persist', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/');
+  await command(page, '/points 20');
+  await command(page, '/biomass 100');
+  await page.locator('.navigation').getByRole('button', { name: 'Creature', exact: true }).click();
+  const canvas = page.locator('#body-placement-preview');
+  await canvas.scrollIntoViewIfNeeded();
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.65);
+  await page.mouse.up();
+  expect((await snapshot(page)).player.genome.appearance!.placements.cilia.x).toBeGreaterThan(0);
+  await page.locator('[data-action="trait-adopt"][data-value="migratory"]').click();
+  expect((await snapshot(page)).player.genome.traits).toContain('migratory');
+  await page.locator('[data-action="variation-adopt"]').first().click();
+  expect((await snapshot(page)).player.genome.variations).toHaveLength(1);
+  await page.screenshot({ path: `artifacts/${testInfo.project.name}-editor.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.locator('#keybindings-form input[name="up"]').fill('i');
+  await page.getByRole('button', { name: 'Save keyboard controls' }).click();
+  expect((await snapshot(page)).settings.keys!.up).toBe('i');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.locator('.navigation').getByRole('button', { name: 'Habitat', exact: true }).click();
+  await page.getByRole('button', { name: 'Begin your lineage' }).click();
+  const y = (await snapshot(page)).player.y;
+  await page.keyboard.down('i');
+  await expect.poll(async () => (await snapshot(page)).player.y).toBeLessThan(y - 15);
+  await page.keyboard.up('i');
+  await page.keyboard.press('p');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: /World seed/ }).click();
+  await page.locator('#world-challenge').selectOption('tiny');
+  await page.getByRole('button', { name: 'Start a new lineage' }).click();
+  expect((await snapshot(page)).world.width).toBe(1200);
+  expect((await snapshot(page)).settings.keys!.up).toBe('i');
+  await page.reload();
+  expect((await snapshot(page)).evolution.challenge).toBe('tiny');
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  ).toBeTruthy();
+});
+
 test('society controls craft, construct, assign work and launch an expedition', async ({
   page,
 }, testInfo) => {
@@ -42,13 +116,11 @@ test('society controls craft, construct, assign work and launch an expedition', 
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
-  await page
-    .locator('#import-file')
-    .setInputFiles({
-      name: 'society.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify(s)),
-    });
+  await page.locator('#import-file').setInputFiles({
+    name: 'society.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(s)),
+  });
   await page.locator('.navigation').getByRole('button', { name: 'Society', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Life learns to build.' })).toBeVisible();
   await page.getByRole('button', { name: 'Craft tools', exact: true }).click();

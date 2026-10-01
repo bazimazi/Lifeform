@@ -18,6 +18,33 @@ export function debugCommand(sim: Simulation, text: string): ActionResult {
     p = s.player;
   const value = Number(args.at(-1));
   switch (command) {
+    case 'set':
+      return debugCommand(
+        sim,
+        `${args[0] === 'hunger' ? 'energy' : args[0]} ${args.slice(1).join(' ')}`,
+      );
+    case 'add':
+      if (args[0] === 'mutation') return debugCommand(sim, `mutation ${args[1]}`);
+      break;
+    case 'trigger':
+      if (args[0] === 'disease') return debugCommand(sim, `disease ${args[1] ?? 'marsh-fever'}`);
+      if (args[0] === 'extinction') {
+        for (const t of s.society.settlements) {
+          t.lost = true;
+          t.population = 0;
+          for (const j of Object.keys(t.jobs)) t.jobs[j as keyof typeof t.jobs] = 0;
+        }
+        for (const planet of s.space.planets) planet.colony = null;
+        for (const c of [...s.creatures].filter((c) => c.speciesId === 'player'))
+          sim.die(c, 'Developer extinction event');
+        sim.die(s.player, 'Developer extinction event');
+        return ok('Extinction scenario triggered.');
+      }
+      return sim.triggerPressure(args[0]);
+    case 'time':
+      if (Number.isFinite(value) && value >= s.time && value - s.time <= 3600)
+        return debugCommand(sim, `advance ${value - s.time}`);
+      break;
     case 'knowledge':
       if (Number.isFinite(value) && value >= 0) {
         s.society.knowledge = value;

@@ -1,6 +1,6 @@
 import type { Creature, GameState } from '../core/types';
 import { DISEASES } from '../data/biology';
-import { PRESSURES } from '../data/content';
+import { activePressure } from '../world/pressures';
 import { phenotype } from './body';
 import { climate } from '../world/regions';
 import { random, distance, clamp } from '../core/random';
@@ -40,8 +40,10 @@ export function movementCondition(state: GameState, c: Creature) {
 export function environmentNeeds(state: GameState, c: Creature, dt: number): string | null {
   const stats = phenotype(c.genome),
     local = climate(state, c),
-    pressure = PRESSURES.find((p) => p.id === state.pressure?.id);
-  const sheltered = state.evolution.nests.some((n) => distance(n, c) < 100 && n.health > 0);
+    pressure = activePressure(state);
+  const sheltered =
+    state.evolution.nests.some((n) => distance(n, c) < 100 && n.health > 0) ||
+    local.region.sites.some((site) => site.kind === 'cave' && distance(site, c) < 75);
   const protection = sheltered || stats.burrowing > 0 ? 0.35 : 1;
   let cause: string | null = null;
   const heat = Math.max(0, local.temperature - stats.heatTolerance);
@@ -69,6 +71,10 @@ export function environmentNeeds(state: GameState, c: Creature, dt: number): str
   }
   if (heat > 8) addStatus(state, c, 'heat-stress', 8, local.biome.name);
   if (cold > 8) addStatus(state, c, 'chill', 8, local.biome.name);
+  if (cold > 20) addStatus(state, c, 'frozen', 3, local.biome.name);
+  if (pressure?.id === 'wildfire' && !local.biome.aquatic && !sheltered)
+    addStatus(state, c, 'burning', 5, 'Wildfire');
+  if (c.stamina < 5) addStatus(state, c, 'exhausted', 2, 'Sprinting');
   for (const disease of DISEASES) {
     if (disease.transmission === 0) continue;
     const exposure =
@@ -106,7 +112,7 @@ export function environmentNeeds(state: GameState, c: Creature, dt: number): str
       0,
       0.98,
     );
-    c.health -= disease.damage * (1 - resistance) * dt;
+    c.health = Math.min(stats.health, c.health - disease.damage * (1 - resistance) * dt);
     c.energy = Math.max(0, c.energy - disease.energyDrain * (1 - resistance) * dt);
     if (c.health <= 0) cause = disease.name;
   }

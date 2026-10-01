@@ -12,6 +12,7 @@ import {
   suitability,
 } from '../src/space/space';
 import { encodeSave, decodeSave } from '../src/core/save';
+import { Simulation } from '../src/simulation/ecosystem';
 function spaceReady() {
   const s = createGame('stars');
   s.society.technologies = TECHNOLOGIES.map((t) => t.id);
@@ -37,6 +38,21 @@ function spaceReady() {
   });
   return s;
 }
+test('an off-world colony preserves the lineage when the home population is lost', () => {
+  const s = spaceReady(),
+    p = s.space.planets[0];
+  p.surveyed = true;
+  assert.ok(launch(s, 'colonize', p.id).ok);
+  tickSpace(s, 40);
+  s.society.settlements = [];
+  const sim = new Simulation(s);
+  sim.die(s.player, 'Home-world disaster');
+  assert.equal(s.lineage.extinct, false);
+  assert.match(s.player.id, /citizen/);
+  assert.ok(p.colony!.population >= 3);
+  assert.equal(s.evolution.fossils.length, 0);
+  assert.deepEqual(decodeSave(encodeSave(s)), s);
+});
 test('expeditions survey, colonize, resupply and engineer living worlds', () => {
   const s = spaceReady(),
     p = s.space.planets[0];

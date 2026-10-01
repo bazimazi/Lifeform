@@ -1,7 +1,10 @@
 import type { Genes, Appearance } from '../biology/genetics-types';
 import type { WorldEvolution } from '../world/types';
 import type { SpaceState } from '../space/types';
+import type { AdaptiveVariation, Trait, ProgressionState } from '../progression/types';
 import type { SocietyState } from '../society/types';
+import type { KeyBindings } from './controls';
+import type { Terrain } from '../world/terrain';
 
 export interface Vec {
   x: number;
@@ -74,6 +77,8 @@ export interface MutationDefinition {
   diet: Diet[];
 }
 export interface Genome {
+  variations?: AdaptiveVariation[];
+  traits?: Trait[];
   organs: string[];
   mutations: string[];
   genes?: Genes;
@@ -169,10 +174,13 @@ export interface LegacyRecord {
   evolution?: WorldEvolution;
   society?: SocietyState;
   space?: SpaceState;
+  progression?: ProgressionState;
 }
 export interface Pressure {
   id: string;
   remaining: number;
+  severity?: number;
+  name?: string;
 }
 export interface TerrainFeature extends Vec {
   kind: 'rock' | 'reed' | 'patch';
@@ -187,6 +195,8 @@ export interface RngStreams {
   simulation: number;
 }
 export interface Settings {
+  vibration?: boolean;
+  keys?: KeyBindings;
   reducedMotion: boolean;
   particles: boolean;
   sound: boolean;
@@ -195,6 +205,9 @@ export interface Settings {
   control: 'hybrid' | 'direct' | 'touch';
 }
 export interface Telemetry {
+  first?: Record<string, number>;
+  sessions?: number;
+  activeSeconds?: number;
   foodEaten: number;
   hunts: number;
   births: number;
@@ -212,6 +225,7 @@ export interface GameState {
   nextId: number;
   rng: RngStreams;
   world: {
+    terrain?: Terrain;
     width: number;
     height: number;
     biome: string;
@@ -241,6 +255,7 @@ export interface GameState {
   evolution: WorldEvolution;
   society: SocietyState;
   space: SpaceState;
+  progression: ProgressionState;
 }
 export interface Input {
   x: number;
