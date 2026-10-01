@@ -1,5 +1,7 @@
 import type { Genes, Appearance } from '../biology/genetics-types';
 import type { WorldEvolution } from '../world/types';
+import type { SpaceState } from '../space/types';
+import type { SocietyState } from '../society/types';
 
 export interface Vec {
   x: number;
@@ -165,6 +167,8 @@ export interface LegacyRecord {
   archive: Descendant[];
   history: HistoryEvent[];
   evolution?: WorldEvolution;
+  society?: SocietyState;
+  space?: SpaceState;
 }
 export interface Pressure {
   id: string;
@@ -235,6 +239,8 @@ export interface GameState {
   telemetry: Telemetry;
   legacies: LegacyRecord[];
   evolution: WorldEvolution;
+  society: SocietyState;
+  space: SpaceState;
 }
 export interface Input {
   x: number;

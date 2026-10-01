@@ -338,7 +338,7 @@ test('v2 summary-only legacy records migrate without inventing missing history',
     },
   ];
   const migrated = decodeSave(JSON.stringify(old));
-  assert.equal(migrated.schemaVersion, 4);
+  assert.equal(migrated.schemaVersion, 6);
   assert.equal(migrated.legacies[0].name, 'Earlier Velari');
   assert.deepEqual(migrated.legacies[0].archive, []);
   assert.deepEqual(migrated.legacies[0].history, []);
@@ -359,7 +359,7 @@ test('v1 saves migrate with accessibility defaults, stamina, telemetry, and lega
   delete old.legacies;
   delete old.player.stamina;
   const migrated = decodeSave(JSON.stringify(old));
-  assert.equal(migrated.schemaVersion, 4);
+  assert.equal(migrated.schemaVersion, 6);
   assert.equal(migrated.player.stamina, 100);
   assert.equal(migrated.settings.control, 'hybrid');
 });

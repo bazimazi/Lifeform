@@ -1,10 +1,92 @@
 import { test, expect, type Page } from '@playwright/test';
 import type { GameState } from '../../src/core/types';
+import { createGame } from '../../src/world/generation';
+import { applyMutation } from '../../src/biology/mutation';
+import { reproduce } from '../../src/biology/reproduction';
+import { foundSettlement } from '../../src/society/society';
+import { TECHNOLOGIES } from '../../src/data/society';
+import { MATERIALS } from '../../src/society/types';
 
 const snapshot = (page: Page): Promise<GameState> =>
   page.evaluate(() => (window as any).lifeform.snapshot());
 const command = (page: Page, text: string) =>
   page.evaluate((value) => (window as any).lifeform.command(value), text);
+
+test('society controls craft, construct, assign work and launch an expedition', async ({
+  page,
+}, testInfo) => {
+  const s = createGame('UI-SOCIETY');
+  s.lineage.points = 100;
+  s.lineage.biomass = 500;
+  s.player.age = 20;
+  for (const id of [
+    'light-eye',
+    'associative-brain',
+    'jointed-legs',
+    'manipulating-digits',
+    'vocal-language',
+    'social-memory',
+    'air-lungs',
+  ])
+    expect(applyMutation(s, id).ok).toBeTruthy();
+  for (let i = 0; i < 2; i++) {
+    s.player.energy = 150;
+    s.player.reproductionCooldown = 0;
+    expect(reproduce(s).ok).toBeTruthy();
+  }
+  for (const m of MATERIALS) s.society.stock[m] = 250;
+  s.society.knowledge = 1000;
+  s.society.technologies = TECHNOLOGIES.map((t) => t.id);
+  expect(foundSettlement(s, 'First Haven').ok).toBeTruthy();
+  s.society.settlements[0].buildings.launchpad = 1;
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+  await page
+    .locator('#import-file')
+    .setInputFiles({
+      name: 'society.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(s)),
+    });
+  await page.locator('.navigation').getByRole('button', { name: 'Society', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Life learns to build.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Craft tools', exact: true }).click();
+  await page
+    .locator('.town-card')
+    .filter({ has: page.getByRole('heading', { name: 'Stone axe', exact: true }) })
+    .getByRole('button', { name: 'Craft', exact: true })
+    .click();
+  expect((await snapshot(page)).society.tools[0].id).toBe('stone-axe');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.getByRole('button', { name: 'Remove gatherer', exact: true }).click();
+  await page.getByRole('button', { name: 'Assign engineer', exact: true }).click();
+  expect((await snapshot(page)).society.settlements[0].jobs.engineer).toBe(1);
+  await page.getByRole('button', { name: 'Construct', exact: true }).click();
+  await page
+    .locator('.town-card')
+    .filter({ has: page.getByRole('heading', { name: 'Waterworks', exact: true }) })
+    .getByRole('button', { name: 'Build', exact: true })
+    .click();
+  await command(page, '/advance 30');
+  expect((await snapshot(page)).society.settlements[0].buildings.well).toBe(1);
+  await page.screenshot({ path: `artifacts/${testInfo.project.name}-society.png`, fullPage: true });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  ).toBeTruthy();
+  await page.getByRole('button', { name: 'Space exploration & frontier research' }).click();
+  await page.locator('[data-action="space-launch"][data-value^="survey:"]').first().click();
+  expect((await snapshot(page)).space.missions).toHaveLength(1);
+  await command(page, '/advance 30');
+  expect((await snapshot(page)).space.planets[0].surveyed).toBeTruthy();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.getByRole('button', { name: 'Space exploration & frontier research' }).click();
+  await page.screenshot({ path: `artifacts/${testInfo.project.name}-space.png`, fullPage: true });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  ).toBeTruthy();
+  expect(errors).toEqual([]);
+});
 
 test('habitat renders, fits the viewport, and moves with pointer and keyboard', async ({
   page,

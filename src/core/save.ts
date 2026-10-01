@@ -12,10 +12,13 @@ import {
 import { createEvolution } from '../world/regions';
 import { validateEvolution } from '../world/validation';
 import { GENES } from '../data/biology';
+import { createSociety } from '../society/society';
+import { createSpace, validateSpace } from '../space/space';
+import { validateSociety } from '../society/validation';
 
 export const SAVE_KEY = 'lifeform.save';
 export const BACKUP_KEY = 'lifeform.save.backup';
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 6;
 const MAX_SAVE_BYTES = 8_000_000;
 type ObjectValue = Record<string, unknown>;
 const object = (value: unknown): value is ObjectValue =>
@@ -159,6 +162,18 @@ export function migrateSave(data: unknown): unknown {
           branch.extinct = true;
           branch.extinctionCause = 'Archived extinction';
         }
+    return migrateSave(next);
+  }
+  if (data.schemaVersion === 4) {
+    const next = structuredClone(data);
+    next.schemaVersion = 5;
+    next.society ??= createSociety();
+    return migrateSave(next);
+  }
+  if (data.schemaVersion === 5) {
+    const next = structuredClone(data);
+    next.schemaVersion = 6;
+    next.space ??= createSpace(String(next.seed));
     return next;
   }
   assert(
@@ -396,6 +411,8 @@ export function validateSave(data: unknown): asserts data is GameState {
       );
   }
   validateEvolution(data.evolution, data as unknown as GameState);
+  validateSociety(data as unknown as GameState);
+  validateSpace(data as unknown as GameState);
 }
 export function decodeSave(text: string): GameState {
   if (text.length > MAX_SAVE_BYTES) throw new Error('This save is too large to load.');

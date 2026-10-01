@@ -208,6 +208,25 @@ export class WorldRenderer {
       }
     }
     const p = state.player;
+    for (const town of state.society.settlements) {
+      ctx.fillStyle = town.lost ? '#78716888' : '#d3c69c88';
+      ctx.strokeStyle = '#e5d7ab';
+      ctx.lineWidth = 2;
+      const count = Math.min(
+        12,
+        Object.values(town.buildings).reduce((a, b) => a + b, 0),
+      );
+      for (let n = 0; n < count; n++) {
+        const x = town.x + ((n % 4) - 1.5) * 25,
+          y = town.y + Math.floor(n / 4) * 25;
+        ctx.fillRect(x, y, 18, 18);
+        ctx.strokeRect(x, y, 18, 18);
+      }
+      ctx.fillStyle = '#f5e6bd';
+      ctx.font = '13px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText(town.name + (town.lost ? ' (ruins)' : ''), town.x, town.y - 15);
+    }
     for (const nest of state.evolution.nests) {
       ctx.strokeStyle = '#ccb58d88';
       ctx.lineWidth = 4;

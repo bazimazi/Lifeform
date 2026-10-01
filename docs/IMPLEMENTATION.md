@@ -27,6 +27,13 @@ Sections 1–5, 97–104, 112, and 123–125 provide design and sequencing const
 
 ## Current work
 
+### Verified expansion checkpoints
+
+- Biological expansion (`6607579`): six continuous biomes, 30 organs, 50 mutations, ten species, 15 resources, ten environmental events, mating and inherited genes, five diseases, symbiosis, nests, species branching, fossils, body appearance, and schema 4 migration. Five additional biological tests passed alongside the original suite.
+- Intelligence through space: learning and remembered resources; eight crafted tools; eleven professions; settlement growth and collapse; 21 buildings; 27 researched technologies; material inputs/outputs; trade, conflict and policies; history-derived culture; pollution; orbital habitats; surveys and alien-life records; mining; colonies, supplies and habitat engineering; repeatable star systems and scientific projects. Schema 6 migrates prior saves. Forty simulation tests and twelve desktop/mobile browser tests pass, including actual crafting, construction, work assignment and a survey launch. Society and mobile space layouts inspected.
+
+The initial-status table above is retained as the starting audit. These checkpoints do not yet close the complete brief: procedural evolution/objectives, alternate starts/world rules, richer behavioral/status interactions, and final full-scope verification remain in progress.
+
 Expand the biological game first: environmental traversal, regions, diseases/statuses, richer content, mating/genetics, speciation and discovery unlocks. Keep existing v1–v3 saves readable. Validate each milestone before moving to the next.
 
 ## Release gates

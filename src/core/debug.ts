@@ -10,6 +10,7 @@ import { exploreRegion } from '../world/regions';
 import { addStatus } from '../biology/conditions';
 import { DISEASES } from '../data/biology';
 import { speciate, buildNest } from '../progression/lineage';
+import { MATERIALS, type Material } from '../society/types';
 
 export function debugCommand(sim: Simulation, text: string): ActionResult {
   const [command, ...args] = text.trim().replace(/^\//, '').split(/\s+/);
@@ -17,6 +18,18 @@ export function debugCommand(sim: Simulation, text: string): ActionResult {
     p = s.player;
   const value = Number(args.at(-1));
   switch (command) {
+    case 'knowledge':
+      if (Number.isFinite(value) && value >= 0) {
+        s.society.knowledge = value;
+        return ok('Knowledge set.');
+      }
+      break;
+    case 'material':
+      if (MATERIALS.includes(args[0] as Material) && Number.isFinite(value) && value >= 0) {
+        s.society.stock[args[0] as Material] = value;
+        return ok('Material stock set.');
+      }
+      break;
     case 'teleport': {
       const r = s.evolution.regions.find((r) => r.biomeId === args[0]);
       if (!r) break;

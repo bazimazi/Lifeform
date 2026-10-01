@@ -2833,3 +2833,113 @@ td {
   max-width: 600px;
   margin-bottom: 24px;
 }
+.economy-stock {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+.economy-stock > div {
+  display: grid;
+  gap: 7px;
+  padding: 16px;
+  background: #18302e;
+  border: 1px solid #a8cb9720;
+  border-radius: 14px;
+}
+.economy-stock b {
+  font-size: 24px;
+  color: #c4e5a7;
+}
+.economy-stock span {
+  text-transform: capitalize;
+}
+.economy-stock small {
+  font-size: 10px;
+  color: #9ab3a6;
+}
+.town-card {
+  padding: 20px;
+  margin: 18px 0;
+  border: 1px solid #a8cb9729;
+  border-radius: 16px;
+  background: #142926;
+}
+.town-card p {
+  line-height: 1.7;
+  font-size: 13px;
+}
+.profession-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 8px;
+  margin-top: 20px;
+}
+.profession-grid > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.profession-grid span {
+  flex: 1;
+  text-transform: capitalize;
+  font-size: 12px;
+}
+.profession-grid button {
+  min-width: 40px;
+  min-height: 40px;
+  border: 1px solid #b8e99840;
+  border-radius: 8px;
+  background: #203a31;
+  color: #dcf0c4;
+}
+.system-note {
+  border-left: 3px solid #b8e998;
+  padding: 16px;
+  margin: 20px 0;
+  background: #b8e9980a;
+  font-size: 13px;
+  line-height: 1.8;
+}
+#settlement-form {
+  margin-top: 24px;
+}
+#settlement-form input {
+  max-width: 100%;
+}
+@media (max-width: 700px) {
+  .navigation .nav-button {
+    min-width: 0;
+    flex: 1;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  .navigation .nav-button span {
+    font-size: 10px;
+  }
+  .town-card {
+    padding: 15px;
+  }
+  .button-row {
+    flex-wrap: wrap;
+  }
+}
+.star-map {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid #b8e99822;
+  margin: 16px 0;
+}
+.mission-list {
+  display: grid;
+  gap: 10px;
+}
+.mission-list > div {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.mission-list small {
+  font-size: 11px;
+  color: #a8b9ae;
+}

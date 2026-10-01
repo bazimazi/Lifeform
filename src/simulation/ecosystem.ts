@@ -1,3 +1,4 @@
+import { tickSpace } from '../space/space';
 import type { ActionResult, Creature, GameState, Input, Resource, Vec } from '../core/types';
 import { phenotype, dietFor } from '../biology/body';
 import { lineagePopulation } from '../biology/reproduction';
@@ -10,6 +11,7 @@ import { populationDeath, updatePopulations } from './population';
 import { traversal, exploreRegion } from '../world/regions';
 import { environmentNeeds, movementCondition, addStatus } from '../biology/conditions';
 import { evaluateMilestones, reconcileBranches } from '../progression/lineage';
+import { tickSociety, toolBonus, learnPlace, citizenSuccessor } from '../society/society';
 
 export const emptyInput = (): Input => ({ x: 0, y: 0, target: null, sprint: false, action: false });
 
@@ -75,6 +77,8 @@ export class Simulation {
       this.regrow();
       exploreRegion(s);
       evaluateMilestones(s);
+      tickSociety(s, TUNING.needsInterval);
+      tickSpace(s, TUNING.needsInterval);
     }
     if (s.tick % Math.round(TUNING.populationInterval / dt) === 0) updatePopulations(s);
     if (s.pressure) {
@@ -111,6 +115,7 @@ export class Simulation {
     const stats = phenotype(c.genome);
     const amount =
       stats.speed *
+      (c.id === this.state.player.id ? 1 + toolBonus(this.state, 'travel') : 1) *
       traversal(this.state, c, {
         x: c.x + (direction.x / length) * 10,
         y: c.y + (direction.y / length) * 10,
@@ -148,6 +153,7 @@ export class Simulation {
     food.regrowAt = this.state.time + definition.growth;
     if (c.id === this.state.player.id) {
       const s = this.state;
+      learnPlace(s, food.type, food);
       s.lineage.biomass += definition.biomass;
       s.telemetry.foodEaten++;
       if (!s.discoveries.resources.includes(food.type)) {
@@ -190,7 +196,10 @@ export class Simulation {
     if (!target) return { ok: false, message: 'Swim closer to a creature to strike.' };
     const damage = Math.max(
       TUNING.minimumAttackDamage,
-      stats.attack + stats.electricity - phenotype(target.genome).defense,
+      stats.attack +
+        stats.electricity +
+        (c.id === this.state.player.id ? toolBonus(this.state, 'hunt', 1) : 0) -
+        phenotype(target.genome).defense,
     );
     c.attackCooldown = TUNING.attackInterval;
     c.energy -= TUNING.attackEnergy;
@@ -280,9 +289,10 @@ export class Simulation {
       `${cause}. Generation ${c.generation} remains in your genetic archive.`,
     );
     if (c.id !== s.player.id) return;
-    const successor = s.creatures
-      .filter((x) => x.speciesId === 'player' && x.health > 0)
-      .sort((a, b) => b.generation - a.generation)[0];
+    const successor =
+      s.creatures
+        .filter((x) => x.speciesId === 'player' && x.health > 0)
+        .sort((a, b) => b.generation - a.generation)[0] ?? citizenSuccessor(s);
     if (successor) {
       s.player = successor;
       s.creatures = s.creatures.filter((x) => x.id !== successor.id);

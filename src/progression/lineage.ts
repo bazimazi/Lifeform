@@ -74,7 +74,12 @@ export function reconcileBranches(state: GameState, dead?: Creature, cause = 'Po
       .map((c) => c.id),
   );
   for (const branch of state.evolution.branches) {
-    if (branch.extinct || branch.members.some((id) => living.has(id))) continue;
+    if (
+      branch.extinct ||
+      branch.members.some((id) => living.has(id)) ||
+      state.society.settlements.some((t) => !t.lost && t.population > 0 && t.branchId === branch.id)
+    )
+      continue;
     branch.extinct = true;
     branch.extinctionCause = cause;
     state.evolution.fossils.push({

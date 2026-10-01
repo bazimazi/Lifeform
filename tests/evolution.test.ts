@@ -100,7 +100,7 @@ test('version 3 worlds migrate into deterministic regions and species branches',
   delete old.evolution;
   old.populations = old.populations.slice(0, 5);
   const next = decodeSave(JSON.stringify(old));
-  assert.equal(next.schemaVersion, 4);
+  assert.equal(next.schemaVersion, 6);
   assert.equal(next.evolution.regions.length, 6);
   assert.equal(next.populations.length, 10);
   assert.equal(phenotype(next.player.genome).health, phenotype(old.player.genome).health);

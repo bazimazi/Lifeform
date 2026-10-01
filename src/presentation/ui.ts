@@ -22,6 +22,7 @@ export function shell() {
         ['creature', 'cell', 'Creature'],
         ['lineage', 'branch', 'Lineage'],
         ['discovery', 'book', 'Discoveries'],
+        ['society', 'habitat', 'Society'],
       ]
         .map(
           ([id, i, label]) =>

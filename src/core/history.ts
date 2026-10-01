@@ -23,5 +23,7 @@ export function legacyRecord(state: GameState, cause: string): LegacyRecord {
     archive: structuredClone(state.lineage.archive),
     history: structuredClone(state.history),
     evolution: structuredClone(state.evolution),
+    society: structuredClone(state.society),
+    space: structuredClone(state.space),
   };
 }

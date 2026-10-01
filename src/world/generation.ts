@@ -1,3 +1,4 @@
+import { createSpace } from '../space/space';
 import { streams, random } from '../core/random';
 import type { Creature, GameState, Genome, RngStreams } from '../core/types';
 import { phenotype } from '../biology/body';
@@ -45,7 +46,7 @@ export function createGame(seed = 'FIRST-LIGHT'): GameState {
     TUNING.worldHeight * 0.75,
   );
   const state: GameState = {
-    schemaVersion: 4,
+    schemaVersion: 6,
     seed: seed.trim().slice(0, 80) || 'FIRST-LIGHT',
     time: 0,
     tick: 0,
@@ -112,6 +113,8 @@ export function createGame(seed = 'FIRST-LIGHT'): GameState {
       mutationRejected: 0,
     },
     legacies: [],
+    society: createSociety(),
+    space: createSpace(seed),
     evolution: createEvolution(seed, TUNING.worldWidth, TUNING.worldHeight, player, [
       {
         id: player.id,
@@ -182,3 +185,4 @@ function position(rng: RngStreams) {
     y: 50 + random(rng, 'world') * (TUNING.worldHeight - 100),
   };
 }
+import { createSociety } from '../society/society';

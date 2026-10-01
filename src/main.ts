@@ -20,6 +20,11 @@ import { AudioFeedback } from './presentation/audio';
 import { icon, escapeHtml as esc } from './presentation/icons';
 import * as ui from './presentation/ui';
 import * as evolutionUI from './presentation/evolution-ui';
+import * as societyUI from './presentation/society-ui';
+import * as society from './society/society';
+import * as space from './space/space';
+import { spacePanel } from './presentation/space-ui';
+import type { MissionKind } from './space/types';
 import { buildNest, stockNest, speciate } from './progression/lineage';
 import { investigate, climate, regionAt } from './world/regions';
 
@@ -129,7 +134,7 @@ function clearControls() {
   (get('joystick').firstElementChild as HTMLElement).style.transform = '';
 }
 function setView(next: string) {
-  if (!['habitat', 'creature', 'lineage', 'discovery'].includes(next)) return;
+  if (!['habitat', 'creature', 'lineage', 'discovery', 'society'].includes(next)) return;
   view = next;
   clearControls();
   if (dialog.open) dialog.close();
@@ -154,7 +159,9 @@ function refreshPanels(force = false) {
         ? ui.creatureView(s) + evolutionUI.geneticsPanel(s)
         : view === 'lineage'
           ? ui.lineageView(s) + evolutionUI.branchesPanel(s)
-          : ui.discoveryView(s);
+          : view === 'society'
+            ? societyUI.societyView(s)
+            : ui.discoveryView(s);
 }
 function updateHud() {
   const s = sim.state,
@@ -197,6 +204,10 @@ function updateHud() {
     lineagePopulation(s) > 1
       ? 'The future has a little company.'
       : 'One life. A thousand possibilities.';
+  const habitatTitle = document.querySelector('.habitat-heading h2');
+  if (habitatTitle) habitatTitle.textContent = s.world.biome;
+  const eraLabel = document.querySelector('.intro .eyebrow');
+  if (eraLabel) eraLabel.textContent = s.society.era.toUpperCase() + ' / A CONTINUING LINEAGE';
   get('world-age').textContent = ui.timeLabel(s.time);
   get('mutation-points').textContent = `${s.lineage.points}`;
   get('biomass-value').textContent = `${Math.floor(s.lineage.biomass)}`;
@@ -390,6 +401,86 @@ app.addEventListener('click', (event) => {
       result({ ok: true, message: 'Body design saved and inherited by future offspring.' });
       break;
     }
+    case 'space':
+      showDialog(ui.dialogFrame('A lineage among the stars', spacePanel(sim.state)));
+      break;
+    case 'space-launch': {
+      const [kind, target] = value.split(':');
+      result(space.launch(sim.state, kind as MissionKind, target));
+      showDialog(ui.dialogFrame('A lineage among the stars', spacePanel(sim.state)));
+      break;
+    }
+    case 'space-frontier':
+      result(space.frontier(sim.state));
+      showDialog(ui.dialogFrame('A lineage among the stars', spacePanel(sim.state)));
+      break;
+    case 'space-research':
+      result(space.researchFrontier(sim.state));
+      showDialog(ui.dialogFrame('A lineage among the stars', spacePanel(sim.state)));
+      break;
+    case 'society-gather-menu':
+      showDialog(ui.dialogFrame('Gather from your habitat', societyUI.gatherMenu(sim.state)));
+      break;
+    case 'society-craft-menu':
+      showDialog(ui.dialogFrame('Tools extend the body', societyUI.craftMenu(sim.state)));
+      break;
+    case 'society-research-menu':
+      showDialog(ui.dialogFrame('Knowledge across generations', societyUI.researchMenu(sim.state)));
+      break;
+    case 'society-build-menu':
+      showDialog(ui.dialogFrame('Transform the habitat', societyUI.buildMenu(sim.state, value)));
+      break;
+    case 'society-gather':
+      result(society.gather(sim.state, value));
+      break;
+    case 'society-craft':
+      result(society.craft(sim.state, value));
+      break;
+    case 'society-research':
+      result(society.research(sim.state, value));
+      if (sim.state.society.research) dialog.close();
+      break;
+    case 'society-convert':
+      result(society.convertBiomass(sim.state));
+      break;
+    case 'society-heal':
+      result(society.heal(sim.state));
+      break;
+    case 'society-build': {
+      const [town, id] = value.split(':');
+      result(society.construct(sim.state, town, id));
+      dialog.close();
+      break;
+    }
+    case 'society-job': {
+      const [town, job, delta] = value.split(':');
+      result(society.assignProfession(sim.state, town, job, Number(delta)));
+      break;
+    }
+    case 'society-policy': {
+      const [kind, id] = value.split(':');
+      result(society.policy(sim.state, kind, id));
+      break;
+    }
+    case 'society-diplomacy': {
+      const [id, action] = value.split(':');
+      result(society.diplomacy(sim.state, id, action));
+      break;
+    }
+    case 'society-visit':
+    case 'society-memory': {
+      const target =
+        action === 'society-visit'
+          ? sim.state.society.settlements.find((t) => t.id === value)
+          : sim.state.society.memory[Number(value)];
+      if (target) {
+        setView('habitat');
+        started = true;
+        paused = false;
+        input.target = { x: target.x, y: target.y };
+      }
+      break;
+    }
     case 'debug':
       if (import.meta.env.DEV) showDebug();
       break;
@@ -432,6 +523,8 @@ app.addEventListener('submit', (event) => {
     save();
     dialog.close();
     notify('A new beginning. Your earlier lineages remain in the archive.');
+  } else if (form.id === 'settlement-form') {
+    result(society.foundSettlement(sim.state, String(new FormData(form).get('name') ?? '')));
   } else if (form.id === 'speciation-form') {
     result(speciate(sim.state, String(new FormData(form).get('name') ?? '')));
   } else if (form.id === 'debug-form' && import.meta.env.DEV) {
