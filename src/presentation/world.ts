@@ -19,12 +19,14 @@ export class WorldRenderer {
   private scale = 1;
   private worldWidth = 2400;
   private worldHeight = 1800;
+  private habitatArt = new Image();
   public target: Vec | null = null;
   constructor(
     public canvas: HTMLCanvasElement,
     state: GameState,
   ) {
     this.ctx = canvas.getContext('2d')!;
+    this.habitatArt.src = '/art/primordial-tidepool.png';
     this.camera = { x: state.player.x, y: state.player.y };
   }
   screenToWorld(x: number, y: number): Vec {
@@ -84,14 +86,37 @@ export class WorldRenderer {
     water.addColorStop(1, '#101f21');
     ctx.fillStyle = water;
     ctx.fillRect(0, 0, width, height);
+    // Atmospheric backdrop sits below all interactive resources and organisms.
+    if (
+      this.habitatArt.complete &&
+      this.habitatArt.naturalWidth &&
+      biomeById[regionAt(state, state.player).biomeId].aquatic
+    ) {
+      const fit = Math.max(width / this.habitatArt.width, height / this.habitatArt.height) * 1.08;
+      const artWidth = this.habitatArt.width * fit,
+        artHeight = this.habitatArt.height * fit;
+      const driftX = Math.sin(this.camera.x / 900) * width * 0.025;
+      const driftY = Math.sin(this.camera.y / 900) * height * 0.025;
+      ctx.globalAlpha = 0.74;
+      ctx.drawImage(
+        this.habitatArt,
+        (width - artWidth) / 2 + driftX,
+        (height - artHeight) / 2 + driftY,
+        artWidth,
+        artHeight,
+      );
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#03151e33';
+      ctx.fillRect(0, 0, width, height);
+    }
     ctx.save();
     ctx.translate(width / 2, height / 2);
     ctx.scale(this.scale, this.scale);
     ctx.translate(-this.camera.x, -this.camera.y);
     for (const region of state.evolution.regions) {
-      ctx.fillStyle = biomeById[region.biomeId].color + '45';
+      ctx.fillStyle = biomeById[region.biomeId].color + '18';
       ctx.fillRect(region.x, region.y, region.width, region.height);
-      ctx.strokeStyle = biomeById[region.biomeId].accent + '22';
+      ctx.strokeStyle = biomeById[region.biomeId].accent + '12';
       ctx.lineWidth = 2;
       ctx.setLineDash([10, 15]);
       ctx.strokeRect(region.x, region.y, region.width, region.height);
@@ -233,10 +258,10 @@ export class WorldRenderer {
     for (const river of state.world.terrain?.rivers ?? []) {
       ctx.beginPath();
       river.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-      ctx.strokeStyle = '#729b9c28';
+      ctx.strokeStyle = '#729b9c12';
       ctx.lineWidth = 55;
       ctx.stroke();
-      ctx.strokeStyle = '#83b0b14a';
+      ctx.strokeStyle = '#83b0b120';
       ctx.lineWidth = 24;
       ctx.stroke();
     }

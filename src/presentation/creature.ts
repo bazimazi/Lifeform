@@ -387,13 +387,37 @@ export function drawPreview(canvas: HTMLCanvasElement, genome: Genome, time: num
   const ctx = canvas.getContext('2d')!;
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.clearRect(0, 0, width, height);
-  ctx.strokeStyle = '#b8e99812';
+  const halo = ctx.createRadialGradient(
+    width / 2,
+    height / 2,
+    5,
+    width / 2,
+    height / 2,
+    Math.min(width, height) * 0.58,
+  );
+  halo.addColorStop(0, '#66d9a42b');
+  halo.addColorStop(0.6, '#28b8bc0c');
+  halo.addColorStop(1, '#28b8bc00');
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, width, height);
+  const dial = Math.min(width, height) * 0.42;
+  ctx.strokeStyle = '#7bddc82b';
   ctx.lineWidth = 1;
-  for (const r of [48, 76]) {
+  for (const r of [dial * 0.73, dial]) {
     ctx.beginPath();
     ctx.arc(width / 2, height / 2, r, 0, Math.PI * 2);
     ctx.stroke();
   }
+  for (let i = 0; i < 48; i++) {
+    const a = (i / 48) * Math.PI * 2;
+    const r = dial + (i % 4 === 0 ? 6 : 3);
+    ctx.strokeStyle = i % 4 === 0 ? '#bfeaa05a' : '#72cdd827';
+    ctx.beginPath();
+    ctx.moveTo(width / 2 + Math.cos(a) * dial, height / 2 + Math.sin(a) * dial);
+    ctx.lineTo(width / 2 + Math.cos(a) * r, height / 2 + Math.sin(a) * r);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#86cbd318';
   ctx.setLineDash([2, 5]);
   ctx.beginPath();
   ctx.moveTo(0, height / 2);

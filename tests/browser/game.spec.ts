@@ -166,7 +166,7 @@ test('habitat renders, fits the viewport, and moves with pointer and keyboard', 
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Every life leaves a story.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Life, without limits.' })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await expect(page.getByRole('button', { name: 'Begin your lineage' })).toBeVisible();
   await page.screenshot({ path: `artifacts/${testInfo.project.name}-initial.png`, fullPage: true });

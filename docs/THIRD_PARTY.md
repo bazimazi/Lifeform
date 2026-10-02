@@ -7,4 +7,4 @@ The interface bundles the Latin variable fonts supplied by `@fontsource-variable
 
 These files are copied into the production `dist/licenses/` directory by Vite. Font files are bundled locally; the game makes no Google Fonts request.
 
-All organism/environment illustrations are procedural Canvas 2D code in this repository. Sound cues are synthesized with Web Audio. Build and testing dependency versions are recorded in `package-lock.json`; their license files remain in their respective installed packages.
+Organisms and interactive environmental elements use procedural Canvas 2D code. The original tidepool backdrop in `public/art/primordial-tidepool.png` was created with the built-in image generation tool; its prompt and provenance are documented in [visual design notes](VISUAL_DESIGN.md). Sound cues are synthesized with Web Audio. Build and testing dependency versions are recorded in `package-lock.json`; their license files remain in their respective installed packages.

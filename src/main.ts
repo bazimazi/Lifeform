@@ -3,6 +3,7 @@ import { DEBUG_LAYERS } from './presentation/debug-overlay';
 import { activePressure } from './world/pressures';
 import { DEFAULT_KEYS, validBindings } from './core/controls';
 import './style.css';
+import './presentation/theme.css';
 import { createGame } from './world/generation';
 import { Simulation, emptyInput } from './simulation/ecosystem';
 import { phenotype } from './biology/body';
@@ -219,6 +220,14 @@ function updateHud() {
   if (habitatTitle) habitatTitle.textContent = s.world.biome;
   const eraLabel = document.querySelector('.intro .eyebrow');
   if (eraLabel) eraLabel.textContent = s.society.era.toUpperCase() + ' / A CONTINUING LINEAGE';
+  const eras = ['biology', 'intelligence', 'tribal', 'civilization', 'industrial', 'space'];
+  const eraIndex = eras.indexOf(s.society.era);
+  document.querySelectorAll<HTMLElement>('.era-track [data-era]').forEach((step) => {
+    const index = eras.indexOf(step.dataset.era!);
+    step.classList.toggle('reached', index <= eraIndex);
+    if (index === eraIndex) step.setAttribute('aria-current', 'step');
+    else step.removeAttribute('aria-current');
+  });
   get('world-age').textContent = ui.timeLabel(s.time);
   get('mutation-points').textContent = `${s.lineage.points}`;
   get('biomass-value').textContent = `${Math.floor(s.lineage.biomass)}`;
