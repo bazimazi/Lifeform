@@ -1,10 +1,14 @@
-# Luminous field journal — 2026-10-02
+# Habitat-first game interface — 2026-10-02
 
-The interface uses midnight blue surfaces, chartreuse primary actions, cyan sensory adaptations, lavender defense adaptations and coral offense adaptations. Habitat artwork and the live organism scanner establish the game's biological identity. The era track reflects saved progression rather than a decorative completion score.
+The habitat occupies the main desktop play area. Compact translucent overlays show creature health, energy, living relatives and one current quest. A framed action dock contains Bite, Evolve, Reproduce and Explore. Midnight blue surfaces, chartreuse actions, amber quest markers, cyan sensory adaptations, lavender defense adaptations and coral offense adaptations establish the game's identity. The chapter and era track follow actual saved progression.
+
+The first three quest checkpoints are Eat, Evolve and Multiply. A ring and dashed path identify compatible food; the food action moves the player toward it. Guidance accounts for direct versus automatic eating, actual body-dependent birth costs, maturity and cooldowns. Completed adaptation milestones persist after removing an organ. Quest completion banners and affordable-upgrade indicators reflect gameplay, without adding a separate points or XP economy.
+
+Evolve opens three suggested adaptations, ordered by affordability. Each card shows benefits, tradeoffs and resource costs. Previews show changed stats and a purchase action first; habitat forecasts and body analysis expand on demand. Creature details, the complete stat list and quick adaptations are also expandable. The complete adaptation library, species trees and later-era systems remain available.
 
 `src/presentation/theme.css` owns the visual theme and responsive overrides. `WorldRenderer` paints local environmental artwork below interactive organisms and resources in aquatic habitats, with a procedural fallback while the image loads. The art is decorative and does not define collision or food locations. Live organism previews use canvas scanner rings and genetic appearance data. Existing large-text, reduced-motion, keyboard and touch settings remain available.
 
-At narrow heights the welcome panel condenses and touch controls appear after starting. Gameplay quick actions remain above bottom navigation at 320, 390 and larger phone widths. Menus, creature editing, lineage, discoveries, society and space share the same surface and typography treatment.
+On phones, the current quest sits above the habitat. Touch controls appear after starting and gameplay quick actions sit below the water, above bottom navigation at the standard phone viewport. Short screens scroll. Menus, creature editing, lineage, discoveries, society and space share the same surface and typography treatment. Reduced motion, larger text and keyboard controls remain available.
 
 ## Original artwork
 
@@ -17,4 +21,4 @@ At narrow heights the welcome panel condenses and touch controls appear after st
 
 ## Verification
 
-The production build and all 16 desktop/mobile browser interaction tests passed. The production smoke test also passed feeding, mutation, save export and a space survey, with zero browser errors or external requests. Its frame sample measured a 16.7 ms median and p95 on the development desktop. Screens were inspected at 1440, 768, 390 and 320 pixels, including compact onboarding, body editing and later-era panels. Screenshots are stored in the ignored `artifacts/` directory. Physical-device testing remains separate from browser emulation.
+The production build, 64 logic tests and all 22 desktop/mobile browser interaction tests passed, including the guided food-to-offspring flow and saved quest progression. The production smoke test passed feeding, mutation, save export and a space survey with no browser errors or external requests. Screens were inspected at 1440, 768, 390 and 320 pixels, with no horizontal overflow. Screenshots are stored in the ignored `artifacts/` directory. Physical-device testing remains separate from browser emulation.

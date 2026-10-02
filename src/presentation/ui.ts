@@ -33,11 +33,10 @@ export function shell() {
         )
         .join('')}
     </nav>
-    <div class="top-actions"><span class="save-status" id="save-status">A new beginning</span><button class="icon-button" data-action="save" title="Save lineage" aria-label="Save lineage">${icon('save')}</button><button class="icon-button" data-action="help" title="How to play" aria-label="How to play">${icon('help')}</button><button class="icon-button" data-action="settings" title="Settings" aria-label="Settings">${icon('settings')}</button></div>
+    <div class="top-actions"><span class="save-status" id="save-status">Autosave enabled</span><button class="icon-button" data-action="save" title="Save lineage" aria-label="Save lineage">${icon('save')}</button><button class="icon-button" data-action="help" title="How to play" aria-label="How to play">${icon('help')}</button><button class="icon-button" data-action="settings" title="Settings" aria-label="Settings">${icon('settings')}</button></div>
   </header>
   <main class="app-content">
-    <section class="intro"><div><div class="eyebrow"><span class="tiny-dot"></span>THE FIRST ERA <span class="muted">/</span> PRIMORDIAL LIFE</div><h1>Life, <em>without limits.</em></h1><p>One tiny organism. An extraordinary possibility.</p></div><div class="world-summary"><span class="live-label"><span class="tiny-dot"></span> A LIVING WORLD</span><div><span id="world-age">00:00</span><span class="divider">|</span><span id="total-species">5 species</span></div></div></section>
-    <ol class="era-track" aria-label="Evolutionary eras">${[
+    <section class="chapter-bar"><div class="intro"><div class="chapter-emblem">01</div><div><div class="eyebrow">CHAPTER 01 / BIOLOGY</div><h1>The first spark</h1></div></div><ol class="era-track" aria-label="Evolutionary eras">${[
       ['biology', '01', 'Origin'],
       ['intelligence', '02', 'Intelligence'],
       ['tribal', '03', 'Society'],
@@ -49,27 +48,28 @@ export function shell() {
         ([era, number, label]) =>
           `<li data-era="${era}"><span>${number}</span><b>${label}</b><i></i></li>`,
       )
-      .join('')}</ol>
+      .join(
+        '',
+      )}</ol><div class="world-summary"><span class="live-label"><span class="tiny-dot"></span> LIVING WORLD</span><div><span id="world-age">00:00</span><span class="divider">·</span><span id="total-species">10 species</span></div></div></section>
     <div class="game-layout">
-      <aside class="organism-panel panel"><div class="section-heading"><span class="eyebrow">YOUR ORGANISM</span><span class="generation" id="generation">GEN 01</span></div><div class="organism-name"><h2 id="lineage-name">Velari</h2><span id="organism-subtitle">A small beginning</span></div><div class="specimen"><span class="scan-label" aria-hidden="true">LIVE SPECIMEN</span><canvas id="specimen" data-preview="current" aria-label="Your organism and its installed organs"></canvas><span class="specimen-caption">PRIMORDIAL ORGANISM</span></div><div class="vitals"><div class="vital-label"><span>${icon('heart')} Health</span><b id="health-value">70 / 70</b></div><div class="meter health"><span id="health-bar"></span></div><div class="vital-label"><span>${icon('bolt')} Energy</span><b id="energy-value">82 / 100</b></div><div class="meter energy"><span id="energy-bar"></span></div><div class="small-stat"><span>Hunger</span><span id="hunger-value">Satiated</span></div><div class="small-stat"><span>Stamina</span><span id="stamina-value">100%</span></div><div class="small-stat"><span>Age</span><span id="age-value">0 seconds</span></div></div><div class="body-summary" id="body-summary"></div><button class="text-button blueprint-button" data-action="view" data-value="creature">Inspect your biology ${icon('arrow')}</button><div class="lineage-mini"><div>${icon('branch')}<span>Living lineage</span><strong id="population-value">1</strong></div><p id="lineage-hint">One life. A thousand possibilities.</p></div></aside>
+      <aside class="organism-panel panel" aria-label="Creature status"><div class="character-header"><div class="specimen"><canvas id="specimen" data-preview="current" aria-label="Your organism and its installed organs"></canvas></div><div class="organism-name"><span class="generation" id="generation">GEN 01</span><h2 id="lineage-name">Velari</h2><span id="organism-subtitle">A small beginning</span></div></div><div class="vitals"><div class="vital-label"><span>${icon('heart')} Health</span><b id="health-value">70 / 70</b></div><div class="meter health"><span id="health-bar"></span></div><div class="vital-label"><span>${icon('bolt')} Energy</span><b id="energy-value">82 / 100</b></div><div class="meter energy"><span id="energy-bar"></span></div><div class="small-stat"><span id="hunger-value">Satiated</span><span><span id="stamina-value">100%</span> stamina</span></div></div><div class="lineage-mini"><div>${icon('branch')}<span>Living relatives</span><strong id="population-value">1</strong></div></div><details class="creature-details"><summary>Creature details ${icon('plus')}</summary><span class="specimen-caption">PRIMORDIAL ORGANISM</span><div class="small-stat"><span>Age</span><span id="age-value">0 seconds</span></div><div class="body-summary" id="body-summary"></div><p id="lineage-hint">One life. A thousand possibilities.</p><button class="text-button blueprint-button" data-action="view" data-value="creature">Inspect your biology ${icon('arrow')}</button></details></aside>
       <section class="habitat-panel panel" id="habitat-panel" aria-label="Playable habitat">
         <div class="habitat-heading"><div><span class="tiny-dot"></span><h2>Primordial shallows</h2><span class="habitat-tag">HOME</span></div><button class="icon-button" data-action="map" aria-label="Open world map" title="World map">${icon('map')}</button></div>
-        <div class="world-stage" id="world-stage"><canvas id="world" tabindex="0" aria-label="Living world. Move with WASD or arrow keys, or click a destination. Space eats or attacks. Shift sprints."></canvas><div class="environment-badge" id="environment-badge">${icon('sun')}<span>Gentle waters<small>A good place to begin</small></span></div><div class="mobile-vitals" aria-label="Current health and energy"><div>${icon('heart')}<span class="mini-meter"><i id="mobile-health"></i></span><b id="mobile-health-value">70</b></div><div>${icon('bolt')}<span class="mini-meter"><i id="mobile-energy"></i></span><b id="mobile-energy-value">82</b></div><div title="Sprint stamina">${icon('wave')}<span class="mini-meter"><i id="mobile-stamina"></i></span><b id="mobile-stamina-value">100</b></div></div><div class="world-tools"><button class="icon-button" data-action="zoom-in" aria-label="Zoom in">${icon('plus')}</button><button class="icon-button" data-action="zoom-out" aria-label="Zoom out">${icon('minus')}</button><button class="icon-button" data-action="vision" aria-label="Toggle perception radius" title="Perception radius">${icon('eye')}</button></div><button class="minimap" data-action="map" aria-label="Open explored world map"><span>N</span><canvas id="minimap" width="156" height="116"></canvas></button><div id="welcome" class="welcome-card"><span class="eyebrow">A WORLD WAITING TO BE DISCOVERED</span><h3>Small beginnings.<br><em>Infinite possibilities.</em></h3><p>Follow the glowing algae. Find your first adaptation.<br>Leave a new generation behind.</p><button class="primary-button" data-action="begin">Begin your lineage ${icon('arrow')}</button></div><div id="paused-badge" class="paused-badge" hidden>WORLD PAUSED</div><div class="touch-controls"><div id="joystick" class="joystick" aria-label="Virtual movement joystick"><span></span></div><button id="touch-action" class="touch-action" aria-label="Eat or attack">${icon('jaw')}</button><button id="touch-sprint" class="touch-sprint" aria-label="Hold to sprint">${icon('bolt')}</button></div><div id="event-banner" class="event-banner" hidden></div></div>
+        <div class="world-stage" id="world-stage"><canvas id="world" tabindex="0" aria-label="Living world. Move with WASD or arrow keys, or click a destination. Space eats or attacks. Shift sprints."></canvas><div class="environment-badge" id="environment-badge">${icon('sun')}<span>Gentle waters<small>A good place to begin</small></span></div><div class="mobile-vitals" aria-label="Current health and energy"><div>${icon('heart')}<span class="mini-meter"><i id="mobile-health"></i></span><b id="mobile-health-value">70</b></div><div>${icon('bolt')}<span class="mini-meter"><i id="mobile-energy"></i></span><b id="mobile-energy-value">82</b></div><div title="Sprint stamina">${icon('wave')}<span class="mini-meter"><i id="mobile-stamina"></i></span><b id="mobile-stamina-value">100</b></div></div><div class="world-tools"><button class="icon-button" data-action="zoom-in" aria-label="Zoom in">${icon('plus')}</button><button class="icon-button" data-action="zoom-out" aria-label="Zoom out">${icon('minus')}</button><button class="icon-button" data-action="vision" aria-label="Toggle perception radius" title="Perception radius">${icon('eye')}</button></div><button class="minimap" data-action="map" aria-label="Open explored world map"><span>N</span><canvas id="minimap" width="156" height="116"></canvas><small>WORLD MAP ${icon('expand')}</small></button><div id="welcome" class="welcome-card"><span class="welcome-emblem">${icon('cell')}</span><span class="eyebrow">YOUR EVOLUTION STARTS HERE</span><h3>Small creature.<br><em>Big adventure.</em></h3><p>Eat. Evolve. Leave a lineage.<br>We’ll guide you one discovery at a time.</p><button class="primary-button" data-action="begin">Begin your lineage ${icon('arrow')}</button><span class="welcome-controls">${icon('map')} Click to move · WASD also works</span></div><div id="paused-badge" class="paused-badge" hidden><span>WORLD PAUSED</span><button class="text-button" data-action="pause">Resume ${icon('play')}</button></div><div class="touch-controls"><div id="joystick" class="joystick" aria-label="Virtual movement joystick"><span></span></div><button id="touch-action" class="touch-action" aria-label="Eat or attack">${icon('jaw')}</button><button id="touch-sprint" class="touch-sprint" aria-label="Hold to sprint">${icon('bolt')}</button></div><div class="field-tip" id="field-tip" hidden>Click anywhere to swim. Follow the marked food.</div><div id="event-banner" class="event-banner" role="status" hidden></div></div>
         <div class="world-controlbar"><div class="time-controls"><button class="icon-button" data-action="pause" id="pause-button" aria-label="Pause or resume">${icon('play')}</button><button class="speed-button active" data-action="speed" data-value="1">1×</button><button class="speed-button" data-action="speed" data-value="2">2×</button><button class="speed-button" data-action="speed" data-value="4">4×</button></div><span class="control-hint"><kbd>W A S D</kbd> move <span>·</span> <kbd>SPACE</kbd> eat / attack</span><span class="control-hint mobile-hint">Tap the water to swim</span><button class="text-button" data-action="help">Controls ${icon('help')}</button></div>
-        <div class="mobile-quickbar"><button data-action="mutations">${icon('cell')} Adapt your body</button><button data-action="reproduce" aria-label="Reproduce offspring">${icon('branch')} Reproduce</button></div>
+        <div class="mobile-quickbar"><button data-action="choose-adaptation">${icon('cell')} Adapt your body</button><button data-action="reproduce" aria-label="Reproduce offspring">${icon('branch')} Reproduce</button></div>
       </section>
       <section id="secondary-panel" class="secondary-panel panel" hidden></section>
-      <aside class="evolution-panel"><div class="panel evolution-inner"><div class="section-heading"><span class="eyebrow">EVOLUTION LAB</span>${icon('branch')}</div><div class="evolution-title"><h2>Become<br><em>something more.</em></h2><p>Small changes. Entirely new possibilities.</p></div><div class="currency-row"><span>${icon('cell')} <strong id="mutation-points">1</strong> mutation points</span><span title="Biomass from food"><strong id="biomass-value">6</strong> biomass</span></div><div id="mutation-cards"></div><button class="text-button all-adaptations" data-action="mutations">Explore all adaptations <span>${MUTATIONS.length}</span>${icon('arrow')}</button></div><div class="objective-card"><span class="eyebrow">YOUR NEXT DISCOVERY</span><h3 id="objective-title">Find your first meal.</h3><p id="objective-detail">Swim toward the glowing algae. Every small discovery opens a new possibility.</p><div class="objective-steps"><span id="goal-food">01 <b>Feed</b></span><i></i><span id="goal-adapt">02 <b>Adapt</b></span><i></i><span id="goal-birth">03 <b>Continue</b></span></div></div></aside>
+      <aside class="evolution-panel"><section class="objective-card" aria-label="Current quest"><div class="quest-heading"><span class="quest-symbol">${icon('book')}</span><div><span class="eyebrow">YOUR NEXT MOVE</span><span id="quest-number" class="quest-number">FIRST STEPS · 01 / 03</span></div><span class="quest-status" id="quest-status">ACTIVE</span></div><h3 id="objective-title">Find your first meal</h3><p id="objective-detail">Follow the marked food. You eat automatically when close enough.</p><div class="quest-progress"><span id="quest-progress-text">0 / 1 food eaten</span><div class="meter"><span id="quest-progress-bar"></span></div></div><button id="quest-action" class="primary-button quest-action" data-action="quest">Show me food ${icon('arrow')}</button><p class="quest-reward" id="quest-reward">Food gives you energy and biomass.</p><div class="objective-steps" aria-label="First steps"><span id="goal-food">01 <b>Eat</b></span><i></i><span id="goal-adapt">02 <b>Evolve</b></span><i></i><span id="goal-birth">03 <b>Multiply</b></span></div></section><div class="panel evolution-inner"><div class="currency-row"><span title="Spend evolution points on adaptations">${icon('cell')} <strong id="mutation-points">1</strong><small>POINTS</small></span><span title="Collect biomass by eating">${icon('drop')}<strong id="biomass-value">6</strong><small>BIOMASS</small></span></div><details class="quick-adaptations"><summary>Available adaptations ${icon('plus')}</summary><div id="mutation-cards"></div></details><button class="text-button all-adaptations" data-action="mutations">Explore all adaptations <span>${MUTATIONS.length}</span>${icon('arrow')}</button></div></aside>
     </div>
-    <footer class="bottom-bar"><div class="latest-event">${icon('book')}<span id="latest-event">In a quiet pocket of water, a lineage begins.</span></div><button class="reproduce-button" data-action="reproduce">${icon('branch')} Reproduce <span id="birth-cost">10 biomass</span></button><button class="text-button journal-button" data-action="view" data-value="lineage">Your story so far ${icon('arrow')}</button></footer>
-    <div class="footnote"><span>One organism. An unwritten future.</span><button data-action="world-settings" class="seed-button">SEED <span id="seed-label">FIRST-LIGHT</span></button>${import.meta.env.DEV ? '<button data-action="debug" class="seed-button">DEVELOPER TOOLS</button>' : ''}</div>
+    <footer class="bottom-bar"><div class="latest-event">${icon('book')}<span id="latest-event">Your adventure is waiting.</span></div><div class="action-dock" aria-label="Gameplay actions"><button class="dock-button" id="bite-button" aria-label="Hold to eat or attack"><span class="dock-icon">${icon('jaw')}</span><span>Bite<small>HOLD / SPACE</small></span></button><button class="dock-button evolve-button" data-action="choose-adaptation"><span class="dock-icon">${icon('cell')}</span><span>Evolve<small id="evolve-hint">CHOOSE AN UPGRADE</small></span><i id="evolve-ready" class="dock-notification" hidden></i></button><button class="dock-button reproduce-button" data-action="reproduce"><span class="dock-icon">${icon('branch')}</span><span>Reproduce<small id="birth-cost">10 biomass</small></span></button><button class="dock-button" data-action="map"><span class="dock-icon">${icon('map')}</span><span>Explore<small>WORLD MAP</small></span></button></div><div class="footnote"><button data-action="world-settings" class="seed-button">SEED <span id="seed-label">FIRST-LIGHT</span></button>${import.meta.env.DEV ? '<button data-action="debug" class="seed-button">DEVELOPER TOOLS</button>' : ''}</div></footer>
   </main><div id="toast" role="status" aria-live="polite" hidden></div><dialog id="dialog" aria-labelledby="dialog-title"></dialog><input type="file" id="import-file" accept="application/json,.json" hidden />`;
 }
 export function mutationCard(s: GameState, id: string, compact = false) {
   const m = mutationById[id],
     installed = s.player.genome.mutations.includes(id),
     reason = mutationReason(s, id);
-  return `<button class="mutation-card ${compact ? 'compact' : ''} ${installed ? 'installed' : ''}" data-action="mutation-preview" data-value="${id}"><span class="mutation-icon ${m.category.toLowerCase()}">${icon(m.icon)}</span><span class="mutation-copy"><span class="mutation-category">${esc(m.category)} ${installed ? '· ADAPTED' : !reason ? '· AVAILABLE' : ''}</span><strong>${esc(m.name)}</strong>${compact ? '' : `<span class="mutation-description">${esc(m.description)}</span>`}<span class="mutation-benefit">${esc(m.benefit)}</span><span class="mutation-tradeoff">${esc(m.tradeoff)}</span></span><span class="mutation-chevron">${icon(installed ? 'check' : 'plus')}</span></button>`;
+  return `<button class="mutation-card ${compact ? 'compact' : ''} ${installed ? 'installed' : ''} ${reason && !installed ? 'unavailable' : ''}" data-action="mutation-preview" data-value="${id}"><span class="mutation-icon ${m.category.toLowerCase()}">${icon(m.icon)}</span><span class="mutation-copy"><span class="mutation-category">${esc(m.category)} ${installed ? '· ADAPTED' : !reason ? '· READY' : '· PREVIEW'}</span><strong>${esc(m.name)}</strong>${compact ? '' : `<span class="mutation-description">${esc(m.description)}</span>`}<span class="mutation-benefit">${esc(m.benefit)}</span><span class="mutation-tradeoff">${esc(m.tradeoff)}</span><span class="mutation-cost">${installed ? 'Installed in your body' : `${m.cost} point${m.cost === 1 ? '' : 's'} · ${m.biomass} biomass`}</span></span><span class="mutation-chevron">${icon(installed ? 'check' : 'arrow')}</span></button>`;
 }
 export function suggestedMutations(s: GameState) {
   const available = MUTATIONS.filter(
@@ -77,13 +77,19 @@ export function suggestedMutations(s: GameState) {
       !s.player.genome.mutations.includes(m.id) &&
       m.requires.every((x) => s.player.genome.mutations.includes(x)) &&
       !m.excludes.some((x) => s.player.genome.mutations.includes(x)),
-  );
+  ).sort((a, b) => Number(!!mutationReason(s, a.id)) - Number(!!mutationReason(s, b.id)));
   return (
     available
       .slice(0, 3)
       .map((m) => mutationCard(s, m.id, true))
       .join('') ||
     '<p class="empty-message">Your body has found its own path. Inspect your biology to reshape it.</p>'
+  );
+}
+export function chooseAdaptationDialog(s: GameState) {
+  return dialogFrame(
+    'Choose your next adaptation',
+    `<p class="dialog-intro">Pick a direction for your creature. Select a card to preview its body and tradeoffs before spending anything.</p><div class="adaptation-wallet">${icon('cell')} ${s.lineage.points} evolution points <span>·</span> ${Math.floor(s.lineage.biomass)} biomass</div><div class="recommended-adaptations">${suggestedMutations(s)}</div><button class="text-button" data-action="mutations">Explore all ${MUTATIONS.length} adaptations ${icon('arrow')}</button>`,
   );
 }
 export function bodySummary(genome: Genome) {
@@ -133,24 +139,27 @@ export function statGrid(stats: Stats, before?: Stats, essentials = false) {
   return `<div class="stat-grid">${(Object.keys(statLabels) as (keyof Stats)[])
     .filter(
       (k) =>
-        !before ||
-        stats[k] !== before[k] ||
-        (essentials &&
-          [
-            'health',
-            'energy',
-            'speed',
-            'attack',
-            'defense',
-            'vision',
-            'mass',
-            'metabolism',
-            'heatTolerance',
-            'coldTolerance',
-            'swimming',
-            'flight',
-            'climbing',
-          ].includes(k)),
+        (!before &&
+          (!essentials ||
+            ['health', 'energy', 'speed', 'attack', 'defense', 'vision', 'mass'].includes(k))) ||
+        (before &&
+          (stats[k] !== before[k] ||
+            (essentials &&
+              [
+                'health',
+                'energy',
+                'speed',
+                'attack',
+                'defense',
+                'vision',
+                'mass',
+                'metabolism',
+                'heatTolerance',
+                'coldTolerance',
+                'swimming',
+                'flight',
+                'climbing',
+              ].includes(k)))),
     )
     .map(
       (k) =>
@@ -166,7 +175,7 @@ export function mutationDialog(s: GameState, id: string, treeGoal = '') {
     reason = mutationReason(s, id);
   return dialogFrame(
     m.name,
-    `<div class="mutation-detail"><canvas class="mutation-preview-canvas" data-preview="${id}" aria-label="Preview organism after mutation"></canvas><div><span class="eyebrow">${esc(m.category)} ADAPTATION</span><p>${esc(m.description)}</p><p class="mutation-benefit">${esc(m.benefit)}</p><p class="mutation-tradeoff">${esc(m.tradeoff)}</p></div></div>${statGrid(preview.after, preview.before, true)}${buildFeedback(s, s.player.genome, mutatedGenome(s.player.genome, id))}<div class="dialog-note">Body mass: ${preview.after.mass} / ${TUNING.bodyBudget}. Offspring inherit this adaptation; existing relatives keep their own genomes.</div>${reason ? `<p class="requirement">${esc(reason)}</p>` : ''}<button class="primary-button wide" data-action="mutate" data-value="${id}" ${reason ? 'disabled' : ''}>${icon('branch')} Adapt · ${m.cost} point + ${m.biomass} biomass</button>${returnToTree}`,
+    `<div class="mutation-detail"><canvas class="mutation-preview-canvas" data-preview="${id}" aria-label="Preview organism after mutation"></canvas><div><span class="eyebrow">${esc(m.category)} ADAPTATION</span><p>${esc(m.description)}</p><p class="mutation-benefit">${esc(m.benefit)}</p><p class="mutation-tradeoff">${esc(m.tradeoff)}</p></div></div>${statGrid(preview.after, preview.before)}<div class="dialog-note">Body mass: ${preview.after.mass} / ${TUNING.bodyBudget}. Offspring inherit this adaptation; existing relatives keep their own genomes.</div>${reason ? `<p class="requirement">${esc(reason)}</p>` : ''}<button class="primary-button wide" data-action="mutate" data-value="${id}" ${reason ? 'disabled' : ''}>${icon('branch')} Adapt · ${m.cost} point + ${m.biomass} biomass</button><details class="advanced-section"><summary>Habitat suitability &amp; body analysis ${icon('plus')}</summary>${buildFeedback(s, s.player.genome, mutatedGenome(s.player.genome, id))}</details>${returnToTree}`,
   );
 }
 export function adaptationsDialog(s: GameState) {
@@ -178,7 +187,7 @@ export function adaptationsDialog(s: GameState) {
 }
 export function creatureView(s: GameState) {
   const stats = phenotype(s.player.genome);
-  return `<div class="view-heading"><span class="eyebrow">THE CREATURE IS THE CHARACTER</span><h2>Your biological blueprint.</h2><p>Every organ changes how you live. Every body has its limits.</p></div><div class="creature-overview"><canvas data-preview="current" aria-label="Current body configuration"></canvas><div><h3>${esc(s.lineage.name)}</h3><p>${dietFor(s.player.genome).join(' · ')}</p><span class="pill">${stats.mass} / ${TUNING.bodyBudget} body mass</span><span class="pill">${s.player.genome.organs.length} organs</span></div></div>${statGrid(stats)}<h3 class="subheading">Installed organs <span>${s.player.genome.organs.length} / ${ORGANS.length} types</span></h3><div class="organ-list">${s.player.genome.organs.map((id) => `<div>${icon('cell')}<span><b>${organById[id].name}</b><small>${organById[id].description}</small></span></div>`).join('')}</div><h3 class="subheading">Your adaptations</h3>${s.player.genome.mutations.length ? `<p class="muted">Removing an adaptation frees its body budget. Rebuilding uses a new mutation point.</p>${s.player.genome.mutations.map((id) => `<div class="adaptation-row"><span>${esc(mutationById[id].name)}</span><button class="text-button" data-action="remove-mutation" data-value="${id}">Remove ${icon('minus')}</button></div>`).join('')}` : '<p class="empty-message">A simple body with an unwritten future. Choose your first adaptation.</p>'}<button class="primary-button" data-action="mutations">Explore adaptations ${icon('arrow')}</button>`;
+  return `<div class="view-heading"><span class="eyebrow">THE CREATURE IS THE CHARACTER</span><h2>Your biological blueprint.</h2><p>Every organ changes how you live. Every body has its limits.</p></div><div class="creature-overview"><canvas data-preview="current" aria-label="Current body configuration"></canvas><div><h3>${esc(s.lineage.name)}</h3><p>${dietFor(s.player.genome).join(' · ')}</p><span class="pill">${stats.mass} / ${TUNING.bodyBudget} body mass</span><span class="pill">${s.player.genome.organs.length} organs</span></div></div>${statGrid(stats, undefined, true)}<details class="advanced-section"><summary>All creature stats ${icon('plus')}</summary>${statGrid(stats)}</details><h3 class="subheading">Installed organs <span>${s.player.genome.organs.length} / ${ORGANS.length} types</span></h3><div class="organ-list">${s.player.genome.organs.map((id) => `<div>${icon('cell')}<span><b>${organById[id].name}</b><small>${organById[id].description}</small></span></div>`).join('')}</div><h3 class="subheading">Your adaptations</h3>${s.player.genome.mutations.length ? `<p class="muted">Removing an adaptation frees its body budget. Rebuilding uses a new mutation point.</p>${s.player.genome.mutations.map((id) => `<div class="adaptation-row"><span>${esc(mutationById[id].name)}</span><button class="text-button" data-action="remove-mutation" data-value="${id}">Remove ${icon('minus')}</button></div>`).join('')}` : '<p class="empty-message">A simple body with an unwritten future. Choose your first adaptation.</p>'}<button class="primary-button" data-action="mutations">Explore adaptations ${icon('arrow')}</button>`;
 }
 export function lineageView(s: GameState) {
   const generations = [...new Set(s.lineage.archive.map((a) => a.generation))].sort(

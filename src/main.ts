@@ -8,8 +8,8 @@ import './presentation/graphs.css';
 import { mutationTreePanel, speciesTreePanel, branchDetailPanel } from './presentation/graphs';
 import { createGame } from './world/generation';
 import { Simulation, emptyInput } from './simulation/ecosystem';
-import { phenotype } from './biology/body';
-import { applyMutation, removeMutation } from './biology/mutation';
+import { phenotype, dietFor } from './biology/body';
+import { applyMutation, removeMutation, mutationReason } from './biology/mutation';
 import {
   reproduce,
   reproductionReason,
@@ -19,7 +19,7 @@ import {
 import { saveGame, loadGame, encodeSave, decodeSave } from './core/save';
 import { debugCommand } from './core/debug';
 import { legacyRecord, record } from './core/history';
-import { TUNING } from './data/content';
+import { TUNING, MUTATIONS, resourceById } from './data/content';
 import type { GameState, ActionResult, Settings } from './core/types';
 import { WorldRenderer } from './presentation/world';
 import { drawPreview } from './presentation/creature';
@@ -36,6 +36,7 @@ import { spacePanel } from './presentation/space-ui';
 import type { MissionKind } from './space/types';
 import { buildNest, stockNest, speciate } from './progression/lineage';
 import { investigate, climate, regionAt } from './world/regions';
+import { journey, nearestFood } from './presentation/journey';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = ui.shell();
@@ -70,6 +71,9 @@ let toastTimeout = 0,
   lastFood = 0,
   lastDeath = 0;
 let lastAudioCue = -10;
+let foodGuidanceUntilCount = sim.state.telemetry.foodEaten === 0 ? 1 : 0;
+let guidedFoodId: number | null = null;
+let lastQuestStep = journey(sim.state).step;
 let bannerTimeout = 0;
 let previousFrame = performance.now(),
   accumulator = 0,
@@ -148,6 +152,7 @@ function clearControls() {
 function setView(next: string) {
   if (!['habitat', 'creature', 'lineage', 'discovery', 'society'].includes(next)) return;
   view = next;
+  document.body.dataset.view = next;
   clearControls();
   if (dialog.open) dialog.close();
   get('habitat-panel').hidden = view !== 'habitat';
@@ -157,6 +162,38 @@ function setView(next: string) {
     b.setAttribute('aria-current', b.dataset.value === view ? 'page' : 'false');
   });
   refreshPanels(true);
+}
+function beginWorld() {
+  if (!started) {
+    sim.state.telemetry.sessions = (sim.state.telemetry.sessions ?? 0) + 1;
+    record(
+      sim.state,
+      'session',
+      'A new observation begins',
+      'The lineage returns to the living world.',
+    );
+  }
+  started = true;
+  paused = false;
+  get<HTMLCanvasElement>('world').focus({ preventScroll: true });
+}
+function guideToFood() {
+  const food = nearestFood(sim.state);
+  if (!food) {
+    notify('No food fits your current diet nearby. Explore another habitat or adapt your diet.');
+    return;
+  }
+  setView('habitat');
+  beginWorld();
+  foodGuidanceUntilCount = sim.state.telemetry.foodEaten + 1;
+  guidedFoodId = food.id;
+  input.target = { x: food.x, y: food.y };
+  renderer.target = input.target;
+  notify(
+    sim.state.settings.control === 'direct'
+      ? 'Moving to food. Hold Bite or press your eat key when you reach it.'
+      : 'Moving to food. Your creature eats automatically when it reaches the marker.',
+  );
 }
 function refreshPanels(force = false) {
   const s = sim.state;
@@ -220,10 +257,21 @@ function updateHud() {
       : 'One life. A thousand possibilities.';
   const habitatTitle = document.querySelector('.habitat-heading h2');
   if (habitatTitle) habitatTitle.textContent = s.world.biome;
-  const eraLabel = document.querySelector('.intro .eyebrow');
-  if (eraLabel) eraLabel.textContent = s.society.era.toUpperCase() + ' / A CONTINUING LINEAGE';
   const eras = ['biology', 'intelligence', 'tribal', 'civilization', 'industrial', 'space'];
   const eraIndex = eras.indexOf(s.society.era);
+  const chapter = String(eraIndex + 1).padStart(2, '0');
+  const eraLabel = document.querySelector('.intro .eyebrow');
+  if (eraLabel) eraLabel.textContent = `CHAPTER ${chapter} / ${s.society.era.toUpperCase()}`;
+  document.querySelector('.chapter-emblem')!.textContent = chapter;
+  document.querySelector('.intro h1')!.textContent =
+    [
+      'The first spark',
+      'A curious mind',
+      'Stronger together',
+      'A world of your own',
+      'The age of invention',
+      'Beyond the horizon',
+    ][eraIndex] ?? 'The first spark';
   document.querySelectorAll<HTMLElement>('.era-track [data-era]').forEach((step) => {
     const index = eras.indexOf(step.dataset.era!);
     step.classList.toggle('reached', index <= eraIndex);
@@ -242,7 +290,14 @@ function updateHud() {
   document.querySelectorAll<HTMLButtonElement>('[data-action="reproduce"]').forEach((button) => {
     button.classList.toggle('ready', !reason);
     button.title = reason ?? 'Create offspring that inherit your current body.';
+    button.setAttribute('aria-description', reason ?? 'Ready to create offspring.');
   });
+  // The notification reflects actual affordability, not just unspent points.
+  const canAdapt = MUTATIONS.some(
+    (m) => !s.player.genome.mutations.includes(m.id) && !mutationReason(s, m.id),
+  );
+  get('evolve-ready').hidden = !canAdapt;
+  get('evolve-hint').textContent = canAdapt ? 'UPGRADE READY' : 'PREVIEW UPGRADES';
   get('pause-button').innerHTML = icon(running() ? 'pause' : 'play');
   get('pause-button').setAttribute('aria-label', running() ? 'Pause world' : 'Resume world');
   get('paused-badge').hidden = !started || running() || s.lineage.extinct;
@@ -256,26 +311,63 @@ function updateHud() {
   document.body.classList.toggle('left-handed', s.settings.leftHanded);
   document.body.classList.toggle('reduced-motion', s.settings.reducedMotion);
   document.body.dataset.control = s.settings.control;
-  const fed = s.telemetry.foodEaten > 0,
-    adapted = p.genome.mutations.length > 0,
-    born = s.telemetry.births > 0;
-  get('goal-food').classList.toggle('complete', fed);
-  get('goal-adapt').classList.toggle('complete', adapted);
-  get('goal-birth').classList.toggle('complete', born);
-  get('objective-title').textContent = !fed
-    ? 'Find your first meal.'
-    : !adapted
-      ? 'Choose a new possibility.'
-      : !born
-        ? 'Leave a new generation.'
-        : 'See how far life can go.';
-  get('objective-detail').textContent = !fed
-    ? 'Swim toward the glowing algae. Every small discovery opens a new possibility.'
-    : !adapted
-      ? 'Use your mutation points. Preview a new organ, and feel the difference it makes.'
-      : !born
-        ? 'Gather 10 biomass, grow for 12 seconds, and reproduce. Protect your young as they grow.'
-        : 'Explore new habitats, adapt to their pressures, and establish a new species branch.';
+  const quest = journey(s);
+  ['goal-food', 'goal-adapt', 'goal-birth'].forEach((id, index) => {
+    get(id).classList.toggle('complete', quest.completed[index]);
+    get(id).classList.toggle('current', quest.step === index);
+    get(id).setAttribute(
+      'aria-label',
+      `${['Eat', 'Evolve', 'Multiply'][index]}: ${quest.completed[index] ? 'complete' : quest.step === index ? 'current objective' : 'upcoming'}`,
+    );
+  });
+  get('objective-title').textContent = quest.title;
+  get('objective-detail').textContent = quest.detail;
+  get('quest-number').textContent =
+    quest.step < 3
+      ? `FIRST STEPS · ${String(quest.step + 1).padStart(2, '0')} / 03`
+      : 'FIRST STEPS COMPLETE';
+  get('quest-status').textContent = quest.step < 3 ? 'ACTIVE' : 'EXPLORE';
+  get('quest-progress-text').textContent = quest.progress;
+  get('quest-progress-bar').style.width = `${(quest.completed.filter(Boolean).length / 3) * 100}%`;
+  get('quest-action').innerHTML = `${esc(quest.label)} ${icon('arrow')}`;
+  get('quest-reward').textContent = quest.reward;
+  get('field-tip').hidden = !started || !running() || s.telemetry.foodEaten > 0;
+  get('field-tip').textContent =
+    s.settings.control === 'direct'
+      ? 'Move to food, then hold Bite to eat.'
+      : 'Click to move. Your creature eats nearby food automatically.';
+  get('health-bar').parentElement!.classList.toggle('low', p.health < stats.health * 0.3);
+  get('energy-bar').parentElement!.classList.toggle('low', p.energy < stats.energy * 0.25);
+  if (s.telemetry.foodEaten < foodGuidanceUntilCount) {
+    const previousFood = s.resources.find((r) => r.id === guidedFoodId);
+    const diet = dietFor(p.genome);
+    const food =
+      previousFood?.active && diet.includes(resourceById[previousFood.type].diet)
+        ? previousFood
+        : nearestFood(s);
+    // Keep a requested food route useful if wildlife eats its target first.
+    if (
+      food &&
+      food.id !== guidedFoodId &&
+      previousFood &&
+      input.target?.x === previousFood.x &&
+      input.target?.y === previousFood.y
+    )
+      input.target = { x: food.x, y: food.y };
+    guidedFoodId = food?.id ?? null;
+    renderer.guidedFood = food ?? null;
+  } else {
+    renderer.guidedFood = null;
+    guidedFoodId = null;
+  }
+  if (started && quest.step > lastQuestStep) {
+    const banner = get('event-banner');
+    banner.textContent = `✓ ${['First meal found', 'New adaptation acquired', 'A new generation begins'][Math.min(quest.step - 1, 2)]}`;
+    banner.hidden = false;
+    window.clearTimeout(bannerTimeout);
+    bannerTimeout = window.setTimeout(() => (banner.hidden = true), 4500);
+  }
+  lastQuestStep = quest.step;
   refreshPanels();
   if ((s.history.at(-1)?.id ?? 0) > lastEventId) {
     const last = s.history.at(-1)!;
@@ -341,18 +433,19 @@ app.addEventListener('click', (event) => {
     value = button.dataset.value ?? '';
   switch (action) {
     case 'begin':
-      if (!started) {
-        sim.state.telemetry.sessions = (sim.state.telemetry.sessions ?? 0) + 1;
-        record(
-          sim.state,
-          'session',
-          'A new observation begins',
-          'The lineage returns to the living world.',
-        );
-      }
-      started = true;
-      paused = false;
-      get<HTMLCanvasElement>('world').focus({ preventScroll: true });
+      beginWorld();
+      break;
+    case 'quest': {
+      const quest = journey(sim.state);
+      if (quest.action === 'food') guideToFood();
+      else if (quest.action === 'adapt') showDialog(ui.chooseAdaptationDialog(sim.state));
+      else if (quest.action === 'reproduce') result(reproduce(sim.state), 'birth');
+      else if (quest.action === 'society') setView('society');
+      else showDialog(ui.dialogFrame('A world worth knowing.', evolutionUI.worldPanel(sim.state)));
+      break;
+    }
+    case 'choose-adaptation':
+      showDialog(ui.chooseAdaptationDialog(sim.state));
       break;
     case 'view':
       setView(value);
@@ -738,6 +831,12 @@ function replaceWorld(state: GameState) {
   lastEventId = state.history.at(-1)?.id ?? 0;
   lastFood = state.telemetry.foodEaten;
   lastDeath = state.telemetry.deaths;
+  foodGuidanceUntilCount = state.telemetry.foodEaten === 0 ? 1 : 0;
+  guidedFoodId = null;
+  lastQuestStep = journey(state).step;
+  renderer.guidedFood = null;
+  get('event-banner').hidden = true;
+  window.clearTimeout(bannerTimeout);
   extinctionShown = false;
   setView('habitat');
   refreshPanels(true);
@@ -935,6 +1034,7 @@ joystick.addEventListener('pointercancel', releaseStick);
 joystick.addEventListener('lostpointercapture', releaseStick);
 for (const [id, setter] of [
   ['touch-action', (v: boolean) => (touchAction = v)],
+  ['bite-button', (v: boolean) => (touchAction = v)],
   ['touch-sprint', (v: boolean) => (touchSprint = v)],
 ] as const) {
   const el = get(id);
@@ -1001,7 +1101,7 @@ function frame(now: number) {
 }
 if (loaded.state)
   get('welcome').innerHTML =
-    `<span class="eyebrow">YOUR STORY CONTINUES</span><h3>Welcome back to the shallows.</h3><p>Your world waited for you. Generation ${sim.state.player.generation} is ready.</p><button class="primary-button" data-action="begin">Continue your lineage ${icon('arrow')}</button>`;
+    `<span class="welcome-emblem">${icon('cell')}</span><span class="eyebrow">YOUR STORY CONTINUES</span><h3>Your next<br><em>chapter awaits.</em></h3><p>Generation ${sim.state.player.generation} is ready.<br>Your current quest picks up where you left off.</p><button class="primary-button" data-action="begin">Continue your lineage ${icon('arrow')}</button>`;
 if (!loaded.state && matchMedia('(prefers-reduced-motion: reduce)').matches)
   sim.state.settings.reducedMotion = true;
 new IntersectionObserver(

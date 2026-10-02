@@ -166,7 +166,7 @@ test('habitat renders, fits the viewport, and moves with pointer and keyboard', 
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Life, without limits.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'The first spark' })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await expect(page.getByRole('button', { name: 'Begin your lineage' })).toBeVisible();
   await page.screenshot({ path: `artifacts/${testInfo.project.name}-initial.png`, fullPage: true });
@@ -191,10 +191,11 @@ test('habitat renders, fits the viewport, and moves with pointer and keyboard', 
 
 test('mobile quick actions remain above navigation and touch movement works; desktop keyboard moves', async ({
   page,
+  baseURL,
 }, testInfo) => {
   const external: string[] = [];
   page.on('request', (request) => {
-    if (!request.url().startsWith('http://127.0.0.1:5173')) external.push(request.url());
+    if (new URL(request.url()).origin !== new URL(baseURL!).origin) external.push(request.url());
   });
   await page.goto('/');
   await page.evaluate(() => document.fonts.ready);
@@ -212,7 +213,7 @@ test('mobile quick actions remain above navigation and touch movement works; des
     await expect.poll(async () => (await snapshot(page)).player.x).toBeGreaterThan(before.x + 15);
     await page.mouse.up();
     await page.getByRole('button', { name: 'Adapt your body' }).click();
-    await expect(page.getByRole('heading', { name: 'What could you become?' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Choose your next adaptation' })).toBeVisible();
   } else {
     await page.keyboard.down('w');
     await expect.poll(async () => (await snapshot(page)).player.y).toBeLessThan(before.y - 15);
@@ -223,16 +224,14 @@ test('mobile quick actions remain above navigation and touch movement works; des
 
 test('preview and install a mutation, reproduce, grow, and inherit', async ({ page }) => {
   await page.goto('/');
+  await page.locator('[data-action="choose-adaptation"]:visible').first().click();
   await page.getByRole('button', { name: /A new way to see/ }).click();
   await expect(page.getByRole('dialog')).toContainText('130');
   await page.getByRole('button', { name: 'Adapt · 1 point + 4 biomass' }).click();
   expect((await snapshot(page)).player.genome.organs).toContain('eye');
   await command(page, '/biomass 30');
   await command(page, '/advance 13');
-  await page
-    .locator('.bottom-bar')
-    .getByRole('button', { name: /Reproduce/ })
-    .click();
+  await page.locator('[data-action="reproduce"]:visible').first().click();
   expect((await snapshot(page)).lineage.archive).toHaveLength(2);
   await command(page, '/advance 31');
   await page.locator('.navigation').getByRole('button', { name: 'Lineage' }).click();
@@ -281,7 +280,8 @@ test('settings, discovery, world map, extinction, and new seeded lineage work', 
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBeTruthy();
   await page.locator('.navigation').getByRole('button', { name: 'Habitat' }).click();
-  await page.getByRole('button', { name: 'Open world map', exact: true }).click();
+  await page.getByRole('button', { name: 'Begin your lineage' }).click();
+  await page.getByRole('button', { name: 'Open explored world map', exact: true }).click();
   await expect(page.locator('#large-map')).toBeVisible();
   await page.getByRole('button', { name: 'Close dialog' }).click();
   await command(page, '/die');
@@ -295,6 +295,41 @@ test('settings, discovery, world map, extinction, and new seeded lineage work', 
     path: `artifacts/${testInfo.project.name}-accessibility.png`,
     fullPage: true,
   });
+});
+
+test('guided quests lead from food to an adaptation and a saved new generation', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/');
+  await expect(page.locator('#objective-title')).toHaveText('Find your first meal');
+  await expect(page.locator('.quick-adaptations')).not.toHaveAttribute('open', '');
+  const questBounds = (await page.locator('#quest-action').boundingBox())!;
+  expect(questBounds.y + questBounds.height).toBeLessThan(testInfo.project.use.viewport!.height);
+  await page.locator('#quest-action').click();
+  await expect.poll(async () => (await snapshot(page)).telemetry.foodEaten).toBeGreaterThan(0);
+  await expect(page.locator('#objective-title')).toHaveText('Evolve your creature');
+  await page.locator('#quest-action').click();
+  await expect(page.locator('.recommended-adaptations .mutation-card')).toHaveCount(3);
+  await page.locator('.recommended-adaptations [data-value="light-eye"]').click();
+  await page.locator('[data-action="mutate"]').click();
+  await expect(page.locator('#objective-title')).toHaveText('Start a new generation');
+  await page.keyboard.press('p');
+  // Isolate quest readiness from random wildlife encounters during fast-forward.
+  for (const population of (await snapshot(page)).populations)
+    await command(page, `/population ${population.speciesId} 0`);
+  await command(page, '/biomass 40');
+  await command(page, '/energy 100');
+  await command(page, '/advance 13');
+  await expect(page.locator('#objective-detail')).toHaveText(
+    'You are ready. Create offspring to keep your lineage alive.',
+  );
+  await expect(page.locator('#quest-action')).toContainText('Reproduce now');
+  await page.locator('#quest-action').click();
+  await expect(page.locator('.objective-steps .complete')).toHaveCount(3);
+  await expect(page.locator('#objective-title')).toHaveText('Beyond the shallows');
+  await page.reload();
+  await expect(page.locator('#objective-title')).toHaveText('Beyond the shallows');
+  await expect(page.locator('.objective-steps .complete')).toHaveCount(3);
 });
 
 test('connected mutation routes preview habitats and purchase prerequisites without spending on inspection', async ({
@@ -311,6 +346,7 @@ test('connected mutation routes preview habitats and purchase prerequisites with
   await page.screenshot({ path: `artifacts/${testInfo.project.name}-mutation-tree.png` });
   await page.locator('.graph-node[data-value="light-eye"]').click();
   await expect(page.locator('.forecast-grid article')).toHaveCount(6);
+  await page.getByText('Habitat suitability & body analysis', { exact: true }).click();
   await expect(page.getByText('Base energy use:', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back to evolution tree' }).click();
   await expect(page.locator('#evolution-goal')).toHaveValue('vocal-language');

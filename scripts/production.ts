@@ -35,7 +35,8 @@ try {
   await page.waitForTimeout(1200);
   await page.keyboard.up('d');
   await page.keyboard.press('p');
-  await page.locator('[data-action="mutation-preview"]').first().click();
+  await page.locator('[data-action="choose-adaptation"]:visible').first().click();
+  await page.locator('.recommended-adaptations [data-action="mutation-preview"]').first().click();
   await page.locator('[data-action="mutate"]').click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
@@ -107,7 +108,7 @@ try {
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.locator('.navigation [data-value="habitat"]').click();
-  await page.locator('[data-action="pause"]').click();
+  await page.locator('#pause-button').click();
   const timings = await page.evaluate<number[]>(
     'new Promise(resolve=>{const frames=[];let previous=performance.now();const step=(now)=>{frames.push(now-previous);previous=now;if(frames.length===120)resolve(frames);else requestAnimationFrame(step);};requestAnimationFrame(step);})',
   );

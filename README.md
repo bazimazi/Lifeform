@@ -36,7 +36,9 @@ The static site is in `dist/`; serve it over HTTP. Fonts and all runtime assets 
 
 Settings includes control remapping, sound, vibration on supported devices, reduced motion, particles, larger text, and left-handed touch controls. Hybrid mode eats nearby food automatically. Menus and hidden tabs pause time; return to Habitat to progress construction, research and expeditions.
 
-Begin by following food, adapting your body, and reproducing. Creature contains organ previews, the body editor, inherited genes, mating, behavioral traits and procedural variations. Lineage contains the family archive, species branches and nests. The map reveals habitats and investigation sites. Discoveries contains renewable ecological objectives and unlocked starting paths.
+Follow **Your next move** to eat, evolve, and reproduce. **Move to food** marks a compatible meal and moves your creature toward it. **Evolve** opens three suggested adaptations, with costs and a preview before purchase; the full adaptation library remains available. The habitat fills the play area, with compact creature status, quest checkpoints, a world map and an action dock. On phones, the current quest appears above the habitat and touch controls.
+
+Creature contains organ previews, the body editor, inherited genes, mating, behavioral traits and procedural variations. Extra stats and habitat analysis expand on demand. Lineage contains the family archive, species branches and nests. The map reveals habitats and investigation sites. Discoveries contains renewable ecological objectives and unlocked starting paths.
 
 Open **Explore all adaptations → Explore the evolution tree** to plan a biological goal. Connected prerequisites show remaining point/biomass costs and body conflicts without spending resources. Individual previews compare stats, food sources, and travel/exposure across habitats. **Lineage → Explore the species tree** opens connected species ancestry, founding bodies, descendant populations and recovered fossils. Recovered fossil sites can be revisited in the habitat.
 

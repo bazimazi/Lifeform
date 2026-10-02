@@ -1,6 +1,6 @@
 import { drawDebug } from './debug-overlay';
 import { drawEffects } from './effects';
-import type { GameState, Vec } from '../core/types';
+import type { GameState, Resource, Vec } from '../core/types';
 import { phenotype, dietFor } from '../biology/body';
 import { clamp, distance, hash } from '../core/random';
 import { resourceById, speciesById } from '../data/content';
@@ -21,6 +21,7 @@ export class WorldRenderer {
   private worldHeight = 1800;
   private habitatArt = new Image();
   public target: Vec | null = null;
+  public guidedFood: Resource | null = null;
   constructor(
     public canvas: HTMLCanvasElement,
     state: GameState,
@@ -402,6 +403,35 @@ export class WorldRenderer {
       ctx.lineTo(p.x + 3, p.y - 48);
       ctx.strokeStyle = '#b8e99888';
       ctx.stroke();
+    }
+    if (this.guidedFood?.active && p.health > 0) {
+      const food = this.guidedFood;
+      const pulse = state.settings.reducedMotion ? 0 : Math.sin(t * 3) * 3;
+      ctx.save();
+      ctx.strokeStyle = '#f5cc82dd';
+      ctx.fillStyle = '#f5cc8218';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(food.x, food.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(food.x, food.y, 22 + pulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.font = 'bold 10px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      const label = state.telemetry.foodEaten === 0 ? 'FIRST MEAL' : 'FOOD';
+      const labelWidth = ctx.measureText(label).width + 18;
+      ctx.fillStyle = '#102631ee';
+      ctx.beginPath();
+      ctx.roundRect(food.x - labelWidth / 2, food.y - 51, labelWidth, 22, 6);
+      ctx.fill();
+      ctx.fillStyle = '#ffe4a5';
+      ctx.fillText(label, food.x, food.y - 36);
+      ctx.restore();
     }
     if (this.target) {
       ctx.strokeStyle = '#b8e99890';
