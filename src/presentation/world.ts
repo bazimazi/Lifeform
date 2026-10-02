@@ -295,6 +295,31 @@ export class WorldRenderer {
       ctx.textAlign = 'center';
       ctx.fillText(`NEST · ${Math.floor(nest.food)} FOOD`, nest.x, nest.y + 50);
     }
+    for (const fossil of state.evolution.fossils) {
+      if (!visible(fossil) || (!fossil.discovered && distance(fossil, p) > body.vision)) continue;
+      ctx.save();
+      ctx.translate(fossil.x, fossil.y);
+      ctx.strokeStyle = fossil.discovered ? '#ebdcb3cc' : '#bdc9c488';
+      ctx.fillStyle = '#15242dbb';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 21, 15, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-11, 0);
+      ctx.lineTo(11, 0);
+      for (let rib = -7; rib <= 7; rib += 7) {
+        ctx.moveTo(rib, -7);
+        ctx.lineTo(rib, 7);
+      }
+      ctx.stroke();
+      ctx.font = '10px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ebdcb3';
+      ctx.fillText(fossil.discovered ? 'RECOVERED FOSSIL' : 'ANCIENT REMAINS', 0, 31);
+      ctx.restore();
+    }
     for (const site of state.evolution.regions.flatMap((r) => r.sites))
       if (site.discovered && !site.investigated) {
         ctx.strokeStyle = '#d6c28d66';

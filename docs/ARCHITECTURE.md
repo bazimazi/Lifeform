@@ -27,6 +27,8 @@ Mating selects one allele from each parent across five loci, with deterministic 
 
 The body editor supports color, proportions and organ offsets through sliders and drag placement. Core and mouth anchor the body. Organ offsets affect rendering and inheritance; they do not independently change collision geometry. Three optional adaptive variations and three behavioral specializations provide constrained procedural choices.
 
+`biology/planning.ts` derives prerequisite routes, unpaid costs and intermediate body conflicts without mutating state. Installed adaptations are idempotent in preview construction. `environmentalExposure` is a pure query shared by live environmental needs and habitat forecasts; forecasts exclude disease damage and movement costs. Remote forecasts sample region centers under current weather. `presentation/graphs.ts` draws connected mutation and species graphs using keyboard-accessible HTML buttons with decorative SVG connectors. Species details use preserved branch founding genomes, while population counts include living representatives, settlements and colonies.
+
 ## Simulation frequency and scope
 
 - Fixed step: 30 Hz, persisted integer tick. Rendering is independent.

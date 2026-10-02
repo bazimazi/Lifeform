@@ -38,6 +38,8 @@ Settings includes control remapping, sound, vibration on supported devices, redu
 
 Begin by following food, adapting your body, and reproducing. Creature contains organ previews, the body editor, inherited genes, mating, behavioral traits and procedural variations. Lineage contains the family archive, species branches and nests. The map reveals habitats and investigation sites. Discoveries contains renewable ecological objectives and unlocked starting paths.
 
+Open **Explore all adaptations → Explore the evolution tree** to plan a biological goal. Connected prerequisites show remaining point/biomass costs and body conflicts without spending resources. Individual previews compare stats, food sources, and travel/exposure across habitats. **Lineage → Explore the species tree** opens connected species ancestry, founding bodies, descendant populations and recovered fossils. Recovered fossil sites can be revisited in the habitat.
+
 To reach intelligence, evolve a light-sensitive eye, associative brain, legs and manipulating digits. Vocal language and social memory lead to society. Gather materials, research tools, establish three living relatives, and found a settlement. Assign professions and secure food, water and housing before expanding. The same organism remains playable throughout.
 
 Research construction, writing, agriculture or aquaculture, trade, metallurgy and energy. Factories and scientific institutes lead to rocketry. Space exploration in Society supports orbit, surveys, mining, colonies, supplies, habitat engineering, additional star systems, and repeatable research. Offspring, settlement citizens and off-world descendants can continue a surviving lineage.

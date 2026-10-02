@@ -1,11 +1,11 @@
-﻿# Verification - 2026-10-01
+﻿# Verification - 2026-10-02
 
-Lifeform 0.2.0 was checked locally on Windows with Node.js 24.18.0. This verifies the playable prototype across biology, society, industry and space; it does not establish commercial release readiness.
+Lifeform 0.3.0 was checked locally on Windows with Node.js 24.18.0. This verifies the playable prototype across biology, society, industry and space; it does not establish commercial release readiness.
 
 | Check                                  | Result                                                                                                                           |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Simulation and persistence suite       | 55 passing tests                                                                                                                 |
-| Browser regression suite               | 16 passing tests across desktop and mobile Chromium                                                                              |
+| Simulation and persistence suite       | 61 passing tests                                                                                                                 |
+| Browser regression suite               | 20 passing tests across desktop and mobile Chromium                                                                              |
 | Strict TypeScript and production build | Passed                                                                                                                           |
 | Formatting and patch whitespace        | Passed                                                                                                                           |
 | Production smoke test                  | Feeding, mutation, export, society import and completed space survey passed; no browser errors                                   |
@@ -15,11 +15,15 @@ Lifeform 0.2.0 was checked locally on Windows with Node.js 24.18.0. This verifie
 | Save compatibility                     | Schema 1-6 migrations, schema 7 roundtrip, original exported v3 save, backup recovery and malformed-input rejection passed       |
 | Procedural replay                      | All 66 starting-path/world-rule combinations validated; seeded simulation, society, missions and generated content replay tested |
 
+New 0.3 checks cover all 50 prerequisite routes, unpaid costs, incompatible bodies, installed-adaptation previews, shared exposure calculations, connected species records, fossil return navigation and read-only inspection. No save schema change is required.
+
 Browser tests exercise adaptation search, all eleven diagnostic overlays, organ drag placement, inherited traits and variations, remapped keys, challenge starts, crafting, construction, jobs, space missions, movement, touch controls, mutation, reproduction, succession, saves, settings, discoveries, map, extinction and restart.
 
 ## Performance sample
 
-The headless profiler ran 600 simulated seconds / 18,000 fixed steps with a moving, invulnerable observer. The final sampled run took 2,865 ms total. Step median: 0.130 ms; p95: 0.333 ms; p99: 0.550 ms; maximum: 3.352 ms. Heap growth was approximately 9.73 MB. The resulting save was 111.4 KB and passed validation.
+The headless profiler ran 600 simulated seconds / 18,000 fixed steps with a moving, invulnerable observer. The 0.2 baseline run took 2,865 ms total. Step median: 0.130 ms; p95: 0.333 ms; p99: 0.550 ms; maximum: 3.352 ms. Heap growth was approximately 9.73 MB. The resulting save was 111.4 KB and passed validation.
+
+The final 0.3 sample completed the same 18,000 steps in 6,267 ms: median 0.279 ms, p95 0.786 ms, p99 1.297 ms and maximum 6.427 ms; heap growth 11.64 MB. A preceding run measured 3,932 ms, illustrating the variability of this shared desktop environment. Both retained the same final populations and 111.4 KB valid save. These are local samples, not a controlled benchmark comparison.
 
 A 120-frame production-browser sample at 1440x1000 measured a 16.7 ms median and 16.8 ms p95. The headless profile excludes rendering; the browser sample includes it. These measurements describe the current desktop environment, not physical-phone performance.
 

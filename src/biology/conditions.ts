@@ -37,7 +37,8 @@ export function movementCondition(state: GameState, c: Creature) {
     1,
   );
 }
-export function environmentNeeds(state: GameState, c: Creature, dt: number): string | null {
+/** Shared exposure forecast: no state changes or random draws. */
+export function environmentalExposure(state: GameState, c: Creature) {
   const stats = phenotype(c.genome),
     local = climate(state, c),
     pressure = activePressure(state);
@@ -45,7 +46,6 @@ export function environmentNeeds(state: GameState, c: Creature, dt: number): str
     state.evolution.nests.some((n) => distance(n, c) < 100 && n.health > 0) ||
     local.region.sites.some((site) => site.kind === 'cave' && distance(site, c) < 75);
   const protection = sheltered || stats.burrowing > 0 ? 0.35 : 1;
-  let cause: string | null = null;
   const heat = Math.max(0, local.temperature - stats.heatTolerance);
   const cold = Math.max(0, 10 - local.temperature - stats.coldTolerance);
   const dehydration = !local.biome.aquatic
@@ -62,6 +62,11 @@ export function environmentNeeds(state: GameState, c: Creature, dt: number): str
       local.toxicity * (1 - stats.toxinResistance) * 0.3 +
       (pressure?.damage ?? 0)) *
     protection;
+  return { stats, local, pressure, sheltered, heat, cold, dehydration, oxygenStress, stress };
+}
+export function environmentNeeds(state: GameState, c: Creature, dt: number): string | null {
+  const { stats, local, pressure, sheltered, heat, cold, stress } = environmentalExposure(state, c);
+  let cause: string | null = null;
   if (stress > 0) {
     c.energy = Math.max(0, c.energy - stress * dt);
     if (stress > 0.2) {

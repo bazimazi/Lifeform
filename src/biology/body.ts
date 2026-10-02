@@ -141,6 +141,7 @@ export function validateBody(genome: Genome): string | null {
 export function mutatedGenome(genome: Genome, id: string): Genome {
   const mutation = mutationById[id];
   const next = structuredClone(genome);
+  if (next.mutations.includes(id)) return next;
   if (mutation?.organ && !next.organs.includes(mutation.organ)) {
     const slot = organById[mutation.organ].slot;
     next.organs = next.organs.filter((x) => organById[x].slot !== slot);

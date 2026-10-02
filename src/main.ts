@@ -4,6 +4,8 @@ import { activePressure } from './world/pressures';
 import { DEFAULT_KEYS, validBindings } from './core/controls';
 import './style.css';
 import './presentation/theme.css';
+import './presentation/graphs.css';
+import { mutationTreePanel, speciesTreePanel, branchDetailPanel } from './presentation/graphs';
 import { createGame } from './world/generation';
 import { Simulation, emptyInput } from './simulation/ecosystem';
 import { phenotype } from './biology/body';
@@ -377,7 +379,20 @@ app.addEventListener('click', (event) => {
       button.classList.toggle('active', renderer.showVision);
       break;
     case 'mutation-preview':
-      showDialog(ui.mutationDialog(sim.state, value));
+      showDialog(ui.mutationDialog(sim.state, value, button.dataset.treeGoal));
+      break;
+    case 'mutation-tree':
+      showDialog(
+        ui.dialogFrame('The evolution tree', mutationTreePanel(sim.state, value), 'graph-dialog'),
+      );
+      break;
+    case 'species-tree':
+      showDialog(
+        ui.dialogFrame('Every branch has a story', speciesTreePanel(sim.state), 'graph-dialog'),
+      );
+      break;
+    case 'branch-detail':
+      showDialog(ui.dialogFrame('A species through time', branchDetailPanel(sim.state, value)));
       break;
     case 'mutations':
       showDialog(ui.adaptationsDialog(sim.state));
@@ -438,12 +453,15 @@ app.addEventListener('click', (event) => {
       showDialog(ui.dialogFrame('A world worth knowing.', evolutionUI.worldPanel(sim.state)));
       break;
     case 'navigate-region':
+    case 'navigate-fossil':
     case 'navigate-site': {
       const r = sim.state.evolution.regions.find((r) => r.id === value);
       const target =
         action === 'navigate-region' && r
           ? { x: r.x + r.width / 2, y: r.y + r.height / 2 }
-          : sim.state.evolution.regions.flatMap((r) => r.sites).find((s) => s.id === value);
+          : action === 'navigate-fossil'
+            ? sim.state.evolution.fossils.find((f) => f.id === value && f.discovered)
+            : sim.state.evolution.regions.flatMap((r) => r.sites).find((s) => s.id === value);
       if (target) {
         setView('habitat');
         started = true;
@@ -584,6 +602,17 @@ app.addEventListener('click', (event) => {
 });
 app.addEventListener('change', (event) => {
   const target = event.target as HTMLInputElement | HTMLSelectElement;
+  if (target.id === 'evolution-goal') {
+    showDialog(
+      ui.dialogFrame(
+        'The evolution tree',
+        mutationTreePanel(sim.state, target.value),
+        'graph-dialog',
+      ),
+    );
+    get<HTMLSelectElement>('evolution-goal').focus();
+    return;
+  }
   if (target.id === 'placement-organ') {
     const p = sim.state.player.genome.appearance?.placements[target.value] ?? { x: 0, y: 0 };
     get<HTMLInputElement>('placement-x').value = String(p.x);

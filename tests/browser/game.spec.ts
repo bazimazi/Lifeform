@@ -296,3 +296,83 @@ test('settings, discovery, world map, extinction, and new seeded lineage work', 
     fullPage: true,
   });
 });
+
+test('connected mutation routes preview habitats and purchase prerequisites without spending on inspection', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/');
+  const before = await snapshot(page);
+  await page.locator('.all-adaptations').click();
+  await page.getByRole('button', { name: 'Explore the evolution tree' }).click();
+  await page.locator('#evolution-goal').selectOption('vocal-language');
+  await expect(page.locator('.graph-node')).toHaveCount(3);
+  await expect(page.locator('.evolution-graph > svg > path')).toHaveCount(2);
+  expect((await snapshot(page)).lineage.points).toBe(before.lineage.points);
+  await page.screenshot({ path: `artifacts/${testInfo.project.name}-mutation-tree.png` });
+  await page.locator('.graph-node[data-value="light-eye"]').click();
+  await expect(page.locator('.forecast-grid article')).toHaveCount(6);
+  await expect(page.getByText('Base energy use:', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to evolution tree' }).click();
+  await expect(page.locator('#evolution-goal')).toHaveValue('vocal-language');
+  await page.locator('.graph-node[data-value="light-eye"]').click();
+  await page.locator('[data-action="mutate"]').click();
+  expect((await snapshot(page)).player.genome.mutations).toContain('light-eye');
+  await page.locator('.all-adaptations').click();
+  await page.getByRole('button', { name: 'Explore the evolution tree' }).click();
+  await expect(page.locator('.graph-node[data-value="light-eye"]')).toHaveClass(/complete/);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  ).toBeTruthy();
+});
+
+test('connected species branches preserve their founding bodies and expose recovered fossil sites', async ({
+  page,
+}, testInfo) => {
+  const s = createGame('UI-SPECIES-TREE');
+  const root = s.evolution.branches[0];
+  const branch = {
+    ...structuredClone(root),
+    id: 'branch-dead',
+    name: 'Velari ancient',
+    parentId: root.id,
+    generation: 2,
+    members: [],
+    extinct: true,
+    extinctionCause: 'Winter exposure',
+  };
+  s.evolution.branches.push(branch);
+  s.evolution.fossils.push({
+    id: 'fossil-ui',
+    name: branch.name,
+    branchId: branch.id,
+    adaptations: [],
+    age: 0,
+    x: s.player.x + 30,
+    y: s.player.y,
+    discovered: true,
+  });
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+  await page.locator('#import-file').setInputFiles({
+    name: 'branches.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(s)),
+  });
+  await page.locator('.navigation').getByRole('button', { name: 'Lineage', exact: true }).click();
+  await page.getByRole('button', { name: 'Explore the species tree' }).click();
+  await expect(page.locator('.graph-node')).toHaveCount(2);
+  await expect(page.locator('.evolution-graph > svg > path')).toHaveCount(1);
+  await page.screenshot({ path: `artifacts/${testInfo.project.name}-species-tree.png` });
+  await page.locator('.graph-node[data-value="branch-dead"]').click();
+  await expect(page.getByText('Extinction cause: Winter exposure')).toBeVisible();
+  await expect(page.locator('[data-preview="branch:branch-dead"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Back to species tree' }).click();
+  await page.getByRole('button', { name: 'Return to fossil site' }).click();
+  await expect(page.locator('#habitat-panel')).toBeVisible();
+  await expect(page.locator('#dialog')).not.toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  ).toBeTruthy();
+  expect(errors).toEqual([]);
+});

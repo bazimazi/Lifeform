@@ -1,3 +1,4 @@
+import { buildFeedback } from './build-feedback';
 import { DEFAULT_KEYS, type KeyBindings } from '../core/controls';
 import { startOptions } from './replay-ui';
 import type { GameState, Genome, Stats } from '../core/types';
@@ -92,7 +93,7 @@ export function bodySummary(genome: Genome) {
 const statLabels: Partial<Record<keyof Stats, string>> = {
   health: 'Health',
   energy: 'Energy capacity',
-  speed: 'Swim speed',
+  speed: 'Base movement speed',
   attack: 'Attack',
   defense: 'Defense',
   vision: 'Perception',
@@ -105,30 +106,73 @@ const statLabels: Partial<Record<keyof Stats, string>> = {
   reproductionCost: 'Birth cost multiplier',
   offspringCount: 'Offspring per birth',
   growthTime: 'Maturation time / sec',
+  swimming: 'Swimming',
+  walking: 'Walking',
+  flight: 'Flight',
+  climbing: 'Climbing',
+  lift: 'Lift',
+  heatTolerance: 'Heat limit / °C',
+  coldTolerance: 'Cold protection / °C',
+  pressureTolerance: 'Pressure tolerance',
+  oxygenEfficiency: 'Air efficiency',
+  waterStorage: 'Water storage',
+  immunity: 'Immunity',
+  stealth: 'Stealth',
+  smell: 'Smell',
+  hearing: 'Hearing',
+  intelligence: 'Intelligence',
+  communication: 'Communication',
+  manipulation: 'Manipulation',
+  sociality: 'Sociality',
+  memory: 'Memory',
+  electricity: 'Electricity',
+  projectile: 'Ranged reach',
+  burrowing: 'Burrowing',
 };
-export function statGrid(stats: Stats, before?: Stats) {
+export function statGrid(stats: Stats, before?: Stats, essentials = false) {
   return `<div class="stat-grid">${(Object.keys(statLabels) as (keyof Stats)[])
-    .filter((k) => !before || stats[k] !== before[k])
+    .filter(
+      (k) =>
+        !before ||
+        stats[k] !== before[k] ||
+        (essentials &&
+          [
+            'health',
+            'energy',
+            'speed',
+            'attack',
+            'defense',
+            'vision',
+            'mass',
+            'metabolism',
+            'heatTolerance',
+            'coldTolerance',
+            'swimming',
+            'flight',
+            'climbing',
+          ].includes(k)),
+    )
     .map(
       (k) =>
-        `<div><span>${statLabels[k]}</span><strong>${before ? `<small>${formatStat(before[k])} → </small>` : ''}${formatStat(stats[k])}</strong></div>`,
+        `<div><span>${statLabels[k]}</span><strong>${before ? `<small>${formatStat(before[k])} → </small>` : ''}${formatStat(stats[k])}${before && stats[k] !== before[k] ? `<em class="stat-delta">${stats[k] > before[k] ? '+' : ''}${formatStat(stats[k] - before[k])}${before[k] !== 0 ? ` (${Math.round(((stats[k] - before[k]) / Math.abs(before[k])) * 100)}%)` : ''}</em>` : ''}</strong></div>`,
     )
     .join('')}</div>`;
 }
 const formatStat = (n: number) => (Number.isInteger(n) ? `${n}` : n.toFixed(2));
-export function mutationDialog(s: GameState, id: string) {
+export function mutationDialog(s: GameState, id: string, treeGoal = '') {
   const m = mutationById[id],
+    returnToTree = `<button class="text-button" data-action="mutation-tree" data-value="${esc(treeGoal || id)}">${treeGoal ? 'Back to evolution tree' : 'Show prerequisite tree'} ${icon('branch')}</button>`,
     preview = previewMutation(s, id),
     reason = mutationReason(s, id);
   return dialogFrame(
     m.name,
-    `<div class="mutation-detail"><canvas class="mutation-preview-canvas" data-preview="${id}" aria-label="Preview organism after mutation"></canvas><div><span class="eyebrow">${esc(m.category)} ADAPTATION</span><p>${esc(m.description)}</p><p class="mutation-benefit">${esc(m.benefit)}</p><p class="mutation-tradeoff">${esc(m.tradeoff)}</p></div></div>${statGrid(preview.after, preview.before)}<div class="dialog-note">Body mass: ${preview.after.mass} / ${TUNING.bodyBudget}. Offspring inherit this adaptation; existing relatives keep their own genomes.</div>${reason ? `<p class="requirement">${esc(reason)}</p>` : ''}<button class="primary-button wide" data-action="mutate" data-value="${id}" ${reason ? 'disabled' : ''}>${icon('branch')} Adapt · ${m.cost} point + ${m.biomass} biomass</button>`,
+    `<div class="mutation-detail"><canvas class="mutation-preview-canvas" data-preview="${id}" aria-label="Preview organism after mutation"></canvas><div><span class="eyebrow">${esc(m.category)} ADAPTATION</span><p>${esc(m.description)}</p><p class="mutation-benefit">${esc(m.benefit)}</p><p class="mutation-tradeoff">${esc(m.tradeoff)}</p></div></div>${statGrid(preview.after, preview.before, true)}${buildFeedback(s, s.player.genome, mutatedGenome(s.player.genome, id))}<div class="dialog-note">Body mass: ${preview.after.mass} / ${TUNING.bodyBudget}. Offspring inherit this adaptation; existing relatives keep their own genomes.</div>${reason ? `<p class="requirement">${esc(reason)}</p>` : ''}<button class="primary-button wide" data-action="mutate" data-value="${id}" ${reason ? 'disabled' : ''}>${icon('branch')} Adapt · ${m.cost} point + ${m.biomass} biomass</button>${returnToTree}`,
   );
 }
 export function adaptationsDialog(s: GameState) {
   return dialogFrame(
     'What could you become?',
-    `<p class="dialog-intro">${MUTATIONS.length} adaptations. Branching possibilities. Every advantage asks something of your body.</p><label class="field-label" for="mutation-search">FIND AN ADAPTATION</label><input id="mutation-search" type="search" placeholder="Search organs, benefits or categories" /><div class="mutation-gallery">${MUTATIONS.map((m) => mutationCard(s, m.id, true)).join('')}</div>`,
+    `<p class="dialog-intro">${MUTATIONS.length} adaptations. Branching possibilities. Every advantage asks something of your body.</p><button class="secondary-button evolution-tree-entry" data-action="mutation-tree">Explore the evolution tree ${icon('branch')}</button><label class="field-label" for="mutation-search">FIND AN ADAPTATION</label><input id="mutation-search" type="search" placeholder="Search organs, benefits or categories" /><div class="mutation-gallery">${MUTATIONS.map((m) => mutationCard(s, m.id, true)).join('')}</div>`,
     'wide-dialog',
   );
 }
@@ -140,7 +184,7 @@ export function lineageView(s: GameState) {
   const generations = [...new Set(s.lineage.archive.map((a) => a.generation))].sort(
     (a, b) => a - b,
   );
-  return `<div class="view-heading"><span class="eyebrow">THE HISTORY OF THE ${esc(s.lineage.name.toUpperCase())}</span><h2>One life becomes many.</h2><p>An individual may die. The story can go on.</p></div><div class="lineage-stats"><div><strong>${lineagePopulation(s)}</strong><span>living relatives</span></div><div><strong>${Math.max(...generations)}</strong><span>generations</span></div><div><strong>${s.lineage.legacy}</strong><span>legacy marks</span></div></div><div class="family-tree">${generations
+  return `<div class="view-heading"><span class="eyebrow">THE HISTORY OF THE ${esc(s.lineage.name.toUpperCase())}</span><h2>One life becomes many.</h2><p>An individual may die. The story can go on.</p></div><div class="lineage-stats"><div><strong>${lineagePopulation(s)}</strong><span>living relatives</span></div><div><strong>${Math.max(...generations)}</strong><span>generations</span></div><div><strong>${s.lineage.legacy}</strong><span>legacy marks</span></div></div><button class="secondary-button evolution-tree-entry" data-action="species-tree">Explore the species tree ${icon('branch')}</button><div class="family-tree">${generations
     .map(
       (g) =>
         `<div class="generation-row"><span class="eyebrow">GEN ${String(g).padStart(2, '0')}</span><div>${s.lineage.archive
@@ -162,7 +206,7 @@ export function lineageView(s: GameState) {
     )
     .join(
       '',
-    )}</div>${s.legacies.length ? `<h3 class="subheading">Earlier lineages</h3>${s.legacies.map((l) => `<div class="legacy-row"><b>${esc(l.name)}</b><span>${timeLabel(l.duration)} · peak ${l.peak} · ${l.adaptations.length} adaptations</span><small>${esc(l.cause)}</small><details><summary>Read this lineage?s archive ? ${l.archive.length} individuals</summary><div class="legacy-history">${l.history.map((h) => `<p><b>${timeLabel(h.time)} ? ${esc(h.title)}</b><br>${esc(h.detail)}</p>`).join('') || '<p>This older save contains a summary only.</p>'}</div></details></div>`).join('')}` : ''}`;
+    )}</div>${s.legacies.length ? `<h3 class="subheading">Earlier lineages</h3>${s.legacies.map((l) => `<div class="legacy-row"><b>${esc(l.name)}</b><span>${timeLabel(l.duration)} · peak ${l.peak} · ${l.adaptations.length} adaptations</span><small>${esc(l.cause)}</small><details><summary>Read this lineage archive · ${l.archive.length} individuals</summary><div class="legacy-history">${l.history.map((h) => `<p><b>${timeLabel(h.time)} ? ${esc(h.title)}</b><br>${esc(h.detail)}</p>`).join('') || '<p>This older save contains a summary only.</p>'}</div></details></div>`).join('')}` : ''}`;
 }
 export function discoveryView(s: GameState) {
   return `<div class="view-heading"><span class="eyebrow">A FIELD GUIDE TO YOUR WORLD</span><h2>Curiosity is an adaptation.</h2><p>Get close. Find out what lives here, and how everything connects.</p></div><h3 class="subheading">Life across the habitats <span>${s.discoveries.species.length} / ${SPECIES.length}</span></h3><div class="species-gallery">${SPECIES.map(
@@ -233,5 +277,7 @@ export function timeLabel(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 }
 export function previewGenome(s: GameState, value: string): Genome {
+  if (value.startsWith('branch:'))
+    return s.evolution.branches.find((b) => b.id === value.slice(7))?.genome ?? s.player.genome;
   return value === 'current' ? s.player.genome : mutatedGenome(s.player.genome, value);
 }

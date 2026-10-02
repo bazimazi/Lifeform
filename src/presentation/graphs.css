@@ -1,0 +1,312 @@
+.evolution-tree-entry {
+  margin: 0 0 22px;
+  width: 100%;
+}
+dialog:has(.graph-dialog) {
+  max-width: min(1000px, calc(100vw - 24px));
+}
+.dialog-content.graph-dialog {
+  width: 920px;
+}
+#evolution-goal {
+  width: 100%;
+  min-height: 46px;
+  padding: 12px;
+  border: 1px solid #92c8d536;
+  border-radius: 10px;
+}
+.route-totals {
+  display: flex;
+  gap: 12px;
+  margin: 20px 0;
+}
+.route-totals > span {
+  flex: 1;
+  border: 1px solid #9dcad222;
+  background: #07202e70;
+  border-radius: 12px;
+  padding: 13px;
+  color: #a8c4ce;
+  font-size: 11px;
+}
+.route-totals b {
+  display: block;
+  font:
+    500 26px Manrope,
+    sans-serif;
+  color: #d3f88a;
+  margin-bottom: 3px;
+}
+.graph-scroll {
+  overflow: auto;
+  max-height: 480px;
+  border: 1px solid #8cc3d32b;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 1px 1px, #8bbec317 1px, transparent 0) 0 0 / 18px 18px,
+    #06152288;
+  scrollbar-color: #46817f #102633;
+}
+.evolution-graph {
+  position: relative;
+}
+.evolution-graph > svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  fill: none;
+  stroke: #87d2ba8c;
+  stroke-width: 2;
+}
+.graph-node {
+  position: absolute;
+  width: 220px;
+  height: 104px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  text-align: left;
+  padding: 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #183642, #10222f);
+  border: 1px solid #a6d0d53b;
+}
+.graph-node:hover {
+  border-color: #d3f88a;
+  background: #254746;
+  transform: translateY(-2px);
+}
+.graph-node.target {
+  box-shadow:
+    inset 0 0 0 1px #d3f88a88,
+    0 0 22px #d3f88a09;
+}
+.graph-node.available {
+  border-color: #d3f88a99;
+}
+.graph-node.complete {
+  background: linear-gradient(135deg, #254239, #132e2c);
+}
+.graph-node.extinct {
+  border-style: dashed;
+  background: #282c34;
+}
+.graph-node strong {
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graph-node small {
+  font-size: 10px;
+  color: #a5bfcb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graph-kicker {
+  font-size: 7px;
+  color: #b4dcbf;
+  letter-spacing: 0.7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.graph-kicker .icon {
+  width: 15px;
+  height: 15px;
+}
+.route-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 22px 0;
+}
+.route-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.route-checklist li > span {
+  color: #81b8c9;
+}
+.route-checklist li.complete > span {
+  color: #d3f88a;
+}
+.route-checklist li > div {
+  flex: 1;
+  min-width: 0;
+}
+.route-checklist b {
+  font-size: 12px;
+}
+.route-checklist small {
+  display: block;
+  margin-top: 5px;
+  color: #a6bdc8;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.branch-specimen {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.branch-specimen canvas {
+  width: 190px;
+  height: 190px;
+  flex-shrink: 0;
+}
+.branch-specimen h3 {
+  font-size: 24px;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.branch-specimen p {
+  font-size: 11px;
+  color: #a2bac8;
+}
+.branch-differences {
+  font-size: 12px;
+  color: #bddac4;
+  line-height: 1.9;
+  padding-left: 20px;
+}
+.fossil-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.fossil-card {
+  padding: 18px;
+  background: linear-gradient(135deg, #30393055, #172b3555);
+  border: 1px dashed #c8c4a34a;
+  border-radius: 12px;
+}
+.fossil-card h3 {
+  margin: 10px 0;
+}
+.fossil-card p {
+  font-size: 12px;
+  color: #b5c6c6;
+}
+.stat-grid strong {
+  text-align: right;
+}
+.stat-grid .stat-delta {
+  display: block;
+  font-size: 9px;
+  font-style: normal;
+  color: #96cbd7;
+  margin-top: 3px;
+}
+.food-forecast {
+  padding: 16px;
+  border: 1px solid #cbe89b2b;
+  border-radius: 12px;
+  background: #cbe89b06;
+}
+.food-forecast p {
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: #c1d6cb;
+}
+.food-forecast p span {
+  display: block;
+  color: #d3eaa4;
+  margin-top: 5px;
+}
+.food-forecast small {
+  color: #a7bdc7;
+  line-height: 1.6;
+  display: block;
+}
+.habitat-forecast {
+  margin: 20px 0;
+}
+.habitat-forecast summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-size: 14px;
+  color: #dcebd6;
+}
+.habitat-forecast > p {
+  font-size: 11px;
+  color: #99b1c1;
+  margin-bottom: 14px;
+}
+.forecast-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.forecast-grid article {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border: 1px solid #8ac9bb30;
+  border-radius: 11px;
+  padding: 13px;
+  background: #57938d09;
+}
+.forecast-grid article.hazardous {
+  border-color: #e4b08938;
+}
+.forecast-grid b {
+  font-size: 12px;
+  color: #d4e4ce;
+}
+.forecast-grid span {
+  font-size: 10px;
+  color: #b7cbd3;
+}
+.forecast-grid small {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #94aebd;
+}
+.large-text .route-checklist b,
+.large-text .forecast-grid span {
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .route-totals {
+    gap: 7px;
+  }
+  .route-totals > span {
+    font-size: 9px;
+    padding: 10px;
+  }
+  .route-totals b {
+    font-size: 22px;
+  }
+  .route-checklist {
+    margin-top: 15px;
+  }
+  .route-checklist li {
+    gap: 9px;
+  }
+  .route-checklist .text-button {
+    font-size: 10px;
+  }
+  .branch-specimen {
+    flex-direction: column;
+    gap: 0;
+    align-items: flex-start;
+  }
+  .branch-specimen canvas {
+    align-self: center;
+  }
+  .forecast-grid {
+    grid-template-columns: 1fr;
+  }
+  .stat-grid .stat-delta {
+    font-size: 9px;
+  }
+}
+
+.fossil-card .text-button {
+  margin-right: 14px;
+}

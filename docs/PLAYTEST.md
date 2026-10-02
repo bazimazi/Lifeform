@@ -5,10 +5,10 @@ The repository now spans biology through interplanetary life. Automated tests es
 ## Short biological session
 
 1. Start a fresh seed and find food without reading developer tools. Observe whether health, energy and compatible resources are understandable.
-2. Preview a mutation and explain its benefit and cost before installing it. Try a different body in a second run.
+2. Select a goal in the connected evolution tree. Explain its prerequisites, remaining costs, before/after stats and habitat warnings before installing it. Confirm that inspection spends nothing and installed prerequisites are not charged again. Try a different body in a second run.
 3. Reproduce, protect offspring and continue as a relative. Confirm that the older body remains a distinct individual.
 4. Travel into a new biome, feel its traversal and climate requirements, investigate a site, and return to shelter.
-5. Try a generated variation, mating, a behavioral trait and species splitting. Check whether their consequences are visible.
+5. Try a generated variation, mating, a behavioral trait and species splitting. Inspect the connected species tree, compare the founding bodies and recover a lost branch's fossil. Use its return action to revisit the site. Check whether these consequences are visible.
 6. Survive or avoid an apex organism and environmental event. Record whether the cause of failure is understandable.
 
 ## Longer progression session

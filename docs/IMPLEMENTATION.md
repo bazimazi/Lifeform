@@ -1,6 +1,6 @@
 # Full-plan implementation ledger
 
-The first commit, `8f15575`, implemented a biological vertical slice. It did not implement the full brief. The expanded request has now been carried through all sixteen implementation phases using the brief's smallest-complete-version rule (section 115).
+The first commit, `8f15575`, implemented a biological vertical slice. Version 0.2 provided a small playable implementation across all sixteen phases using section 115 of the brief. That phase coverage is not an exhaustive completion claim: subsequent audits continue to deepen mechanics and close missing interactions.
 
 This ledger describes concrete implemented behavior. It does not equate a prototype with a commercially balanced release or treat long-term content-count targets as already delivered.
 
@@ -40,5 +40,8 @@ This ledger describes concrete implemented behavior. It does not equate a protot
 2. `6607579`: biomes, advanced organs, genetics, conditions and species branches.
 3. `b18f91b`: intelligence, society, civilization, industry and space.
 4. Version 0.2.0: procedural replay, behavioral ecology, alternate starts, challenges, terrain/hydrology, complete editor controls, feedback, diagnostics and broad verification.
+5. Version 0.3.0: connected mutation prerequisite trees and cost planning (sections 10/58), complete phenotype comparisons and shared climate/traversal forecasts (58/59), connected species ancestry with preserved founding genomes and population accounting (26/28/82), inspectable fossil records and return navigation (21/28/94).
+
+The 0.3 audit found that the previous card catalogs and branch lists did not fully express the plan's tree interactions. These now have dedicated interactive views. Mutation previews also no longer double-count an installed adaptation's modifiers. The new views derive their data from existing saves; schema 7 remains unchanged.
 
 See [verification](VERIFICATION.md) for measured results and [playtesting](PLAYTEST.md) for release validation. The project contains playable implementations across the requested progression; physical-device qualification, broader browser coverage and human balance/fun approval remain release work.
